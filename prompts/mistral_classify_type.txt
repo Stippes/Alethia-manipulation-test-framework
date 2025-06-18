@@ -1,0 +1,17 @@
+You are an AI that classifies messages based on their manipulation patterns. 
+Input:
+{
+  "urgency": true,
+  "guilt": false,
+  "flattery": false,
+  "fomo": false,
+  "dark_ui": false,
+  "emotion_count": 1
+}
+
+Based on these flags, choose exactly one label from:
+  - "Scarcity Nudge"
+  - "Emotional Appeal"
+  - "Confirmshaming"
+  - "No Manipulation"
+Return JSON: { "label": "<chosen_label>" }, without any extra text.

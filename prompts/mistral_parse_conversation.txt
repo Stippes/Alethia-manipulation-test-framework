@@ -1,0 +1,22 @@
+OUTPUT STRICTLY VALID JSON WITH NO EXPLANATION OR EXTRA TEXT.
+
+Schema:
+{
+  "conversation_id": "<string or null>",
+  "messages": [
+    {
+      "sender": "<string or null>",
+      "timestamp": "<ISO 8601 or null>",
+      "text": "<string>"
+    }
+    ...
+  ]
+}
+
+If a line lacks a sender or timestamp, set that property to null. Use ISO 8601 (e.g., "2025-06-05T14:23:00Z") if a date/time is present.
+
+Begin Transcript:
+---
+{RAW_TEXT_GOES_HERE}
+---
+End Transcript.

@@ -1,0 +1,24 @@
+Parse the following chat transcript into JSON. 
+Return exactly:
+
+{
+  "conversation_id": "<string or null>",
+  "messages": [
+    {
+      "sender": "<string or null>",
+      "timestamp": "<ISO 8601 or null>",
+      "text": "<string>"
+    }
+    ...
+  ]
+}
+
+Rules:
+1. Use null if sender/timestamp missing.
+2. Timestamps must be ISO 8601 when present.
+3. Do NOT add commentary, line breaks, or extra fields—only valid JSON.
+
+Transcript:
+---
+{RAW_TEXT_GOES_HERE}
+---

@@ -1,0 +1,19 @@
+OUTPUT STRICTLY VALID JSON—NO EXTRA TEXT OR COMMENTS.
+
+Schema:
+{
+  "urgency": <true or false>,
+  "guilt": <true or false>,
+  "flattery": <true or false>,
+  "fomo": <true or false>,
+  "dark_ui": <true or false>,
+  "emotion_count": <integer>
+}
+
+- emotion_count: number of distinct emotion words like “sad,” “fear,” “happy”
+- For each boolean, set true if the message contains that persuasion pattern.
+
+Message:
+---
+{MESSAGE_TEXT}
+---

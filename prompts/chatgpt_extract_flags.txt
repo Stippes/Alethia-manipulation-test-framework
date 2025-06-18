@@ -1,0 +1,19 @@
+You are an expert at identifying persuasive/manipulative language. 
+Analyze the following single message. Return valid JSON with exactly these keys:
+  {
+    "urgency": <true or false>,
+    "guilt": <true or false>,
+    "flattery": <true or false>,
+    "fomo": <true or false>,
+    "dark_ui": <true or false>,
+    "emotion_count": <integer>
+  }
+
+- "emotion_count" is the number of distinct emotion words (e.g., “sad,” “angry,” “happy”).
+- Set each boolean to true if its category is present (otherwise false).
+- Do NOT output any comments, explanations, or extra fields—ONLY JSON.
+
+Message:
+\"\"\"
+{MESSAGE_TEXT}
+\"\"\"

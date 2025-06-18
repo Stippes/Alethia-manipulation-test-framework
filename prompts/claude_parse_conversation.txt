@@ -1,0 +1,18 @@
+You are an AI assistant that converts chat transcripts into structured JSON. 
+Follow these rules:
+1. Output a single JSON object with keys:
+   - "conversation_id": string or null
+   - "messages": array of message objects
+2. Each message object must have:
+   - "sender": string or null
+   - "timestamp": ISO 8601 string (e.g. "2025-06-05T14:23:00Z") or null
+   - "text": string
+3. If sender or timestamp is not given, use null.
+4. Do not output any explanations, comments, or text outside of the JSON.
+
+Chat Transcript:
+-----------
+{RAW_TEXT_GOES_HERE}
+-----------
+
+Return ONLY the JSON.

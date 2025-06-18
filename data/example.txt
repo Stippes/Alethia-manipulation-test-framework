@@ -1,0 +1,2 @@
+[10:00:00] Alice: Hi there!
+[10:00:05] Bot: Hello, how can I help?
