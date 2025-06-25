@@ -3,3 +3,6 @@
 .env
 __pycache__/
 *.py[cod]
+
+dashboard.html
+test_results.json
