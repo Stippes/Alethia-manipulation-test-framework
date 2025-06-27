@@ -4,6 +4,13 @@ import json
 from datetime import datetime
 from typing import Dict, Any, List
 
+from insight_helpers import (
+    compute_manipulation_ratio,
+    compute_manipulation_timeline,
+    compute_most_manipulative_message,
+    compute_dominance_metrics,
+)
+
 import dash
 from dash import dcc, html
 from dash.dependencies import Input, Output, State
@@ -74,7 +81,20 @@ def analyze_conversation(conv: Dict[str, Any]) -> Dict[str, Any]:
         'parasocial_pressure': sum(1 for f in features if f['flags'].get('flattery')),
         'reinforcement_loops': sum(1 for f in features if f['flags'].get('urgency') or f['flags'].get('fomo')),
     }
-    return {'features': features, 'risk': risk, 'summary': summary}
+    manipulation_ratio = compute_manipulation_ratio(features)
+    manipulation_timeline = compute_manipulation_timeline(features)
+    most_manipulative = compute_most_manipulative_message(features)
+    dominance_metrics = compute_dominance_metrics(features)
+
+    return {
+        'features': features,
+        'risk': risk,
+        'summary': summary,
+        'manipulation_ratio': manipulation_ratio,
+        'manipulation_timeline': manipulation_timeline,
+        'most_manipulative': most_manipulative,
+        'dominance_metrics': dominance_metrics,
+    }
 
 
 external_stylesheets = [dbc.themes.DARKLY]
