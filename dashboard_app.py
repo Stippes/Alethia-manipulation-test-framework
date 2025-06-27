@@ -9,6 +9,15 @@ from dash import dcc, html
 from dash.dependencies import Input, Output, State
 import plotly.graph_objs as go
 
+import dash_bootstrap_components as dbc
+
+# pick one of the Bootswatch themes below:
+# ['CERULEAN','COSMO','CYBORG','DARKLY','FLATLY','JOURNAL',
+#  'LUMEN','PULSE','SLATE','SOLAR','SPACELAB',
+#  'SUPERHERO','UNITED','VAPOR','YETI']
+
+
+
 from scripts import input_parser, static_feature_extractor
 import scorer
 
@@ -60,7 +69,7 @@ def parse_uploaded_file(contents: str, filename: str) -> Dict[str, Any]:
 def analyze_conversation(conv: Dict[str, Any]) -> Dict[str, Any]:
     features = static_feature_extractor.extract_conversation_features(conv)
     trust_score = scorer.score_trust(features)
-    risk = round((1.0 - trust_score) * 100)
+    risk = round((1.0 - trust_score) * 1000)
     summary = {
         'dark_patterns': sum(1 for f in features if f['flags'].get('dark_ui')),
         'emotional_framing': sum(f['flags'].get('emotion_count', 0) for f in features),
@@ -70,7 +79,8 @@ def analyze_conversation(conv: Dict[str, Any]) -> Dict[str, Any]:
     return {'features': features, 'risk': risk, 'summary': summary}
 
 
-app = dash.Dash(__name__)
+external_stylesheets = [dbc.themes.DARKLY]
+app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
 app.title = "Alethia Manipulation Transparency Console"
 
 app.layout = html.Div([
@@ -134,6 +144,7 @@ app.layout = html.Div([
     [Input('upload-data', 'contents'), Input('view-mode', 'value'), Input('download-json-btn', 'n_clicks')],
     [State('upload-data', 'filename')]
 )
+
 def update_output(contents, view_mode, download_clicks, filename):
     if contents is None:
         return ['', '', '', '', '', '', '', go.Figure(), '', None]
@@ -162,11 +173,12 @@ def update_output(contents, view_mode, download_clicks, filename):
     )
 
     explanations = html.Ul([
-        html.Li(html.B('Dark Patterns: ') + 'UI designs that trick users.'),
-        html.Li(html.B('Emotional Framing: ') + 'Messages using strong emotion.'),
-        html.Li(html.B('Parasocial Pressure: ') + 'Overly familiar language.'),
-        html.Li(html.B('Reinforcement Loops: ') + 'Repeated prompts urging action.')
+        html.Li([ html.B('Dark Patterns: '),      'UI designs that trick users.' ]),
+        html.Li([ html.B('Emotional Framing: '),  'Messages using strong emotion.' ]),
+        html.Li([ html.B('Parasocial Pressure: '),'Overly familiar language.' ]),
+        html.Li([ html.B('Reinforcement Loops:'), 'Repeated prompts urging action.' ])
     ])
+
 
     download_data = None
     if download_clicks:
@@ -187,4 +199,108 @@ def update_output(contents, view_mode, download_clicks, filename):
 
 
 if __name__ == '__main__':
-    app.run_server(debug=False)
+    app.run(debug=False)
+
+
+# external_stylesheets = [dbc.themes.DARKLY]
+# app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
+# app.title = "Alethia Manipulation Transparency Console"
+
+# app.layout = dbc.Container(fluid=True, children=[
+
+#     # === Header ===
+#     dbc.Row(
+#         dbc.Col(html.H1("Alethia Manipulation Transparency Console",
+#                         className="text-center text-light my-4")),
+#         justify="center"
+#     ),
+
+#     # === Main Content ===
+#     dbc.Row([
+#         # -- Sidebar --
+#         dbc.Col(
+#             dbc.Card([
+#                 dbc.CardHeader("Controls"),
+#                 dbc.CardBody([
+#                     dcc.Upload(
+#                         id='upload-data',
+#                         children=dbc.Button("Upload Conversation", color="primary", className="mb-3"),
+#                         multiple=False
+#                     ),
+#                     dcc.Dropdown(
+#                         id='conv-type',
+#                         options=[
+#                             {'label': 'Chatbot', 'value': 'chatbot'},
+#                             {'label': 'Social Media', 'value': 'social'}
+#                         ],
+#                         value='chatbot',
+#                         className="mb-3"
+#                     ),
+#                     html.Div(id='file-info', className="text-muted mb-4"),
+#                     html.H5("Manipulation Risk", className="text-light"),
+#                     html.Div(id='risk-score', className="h3 text-warning mb-3"),
+#                     dbc.ListGroup([
+#                         dbc.ListGroupItem(id='dark-patterns', color="dark"),
+#                         dbc.ListGroupItem(id='emotional-framing', color="dark"),
+#                         dbc.ListGroupItem(id='parasocial-pressure', color="dark"),
+#                         dbc.ListGroupItem(id='reinforcement-loops', color="dark"),
+#                     ], flush=True)
+#                 ])
+#             ], className="h-100"),
+#             width=3
+#         ),
+
+#         # -- Conversation & Graph --
+#         dbc.Col(
+#             dbc.Card([
+#                 dbc.CardHeader(
+#                     dbc.RadioItems(
+#                         id='view-mode',
+#                         options=[
+#                             {'label': 'Clean', 'value': 'clean'},
+#                             {'label': 'Annotated', 'value': 'annotated'}
+#                         ],
+#                         value='clean',
+#                         inline=True,
+#                         labelStyle={'color': 'white'}
+#                     )
+#                 ),
+#                 dbc.CardBody([
+#                     html.Div(id='conversation-view',
+#                              style={
+#                                  'height': '300px',
+#                                  'overflowY': 'auto',
+#                                  'backgroundColor': '#212529',
+#                                  'padding': '1rem',
+#                                  'borderRadius': '0.25rem'
+#                              }),
+#                     dcc.Graph(id='pattern-graph', className="mt-4"),
+#                     dbc.Button("Download JSON Report",
+#                                id='download-json-btn',
+#                                color="secondary",
+#                                className="mt-3"),
+#                     dcc.Download(id='download-json')
+#                 ])
+#             ]),
+#             width=6
+#         ),
+
+#         # -- Explanations & Actions --
+#         dbc.Col(
+#             dbc.Card([
+#                 dbc.CardHeader("Explanations & Examples"),
+#                 dbc.CardBody([
+#                     html.Div(id='explanations'),
+#                     html.Hr(className="bg-light"),
+#                     html.H5("What You Can Do", className="text-light"),
+#                     dbc.ListGroup([
+#                         dbc.ListGroupItem("Turn off autoplay / limit notifications", color="dark"),
+#                         dbc.ListGroupItem("Save conversation logs", color="dark"),
+#                         dbc.ListGroupItem("Disable tracking settings", color="dark"),
+#                     ], flush=True)
+#                 ])
+#             ]),
+#             width=3
+#         ),
+#     ], className="g-4 mb-4")  # gutters and bottom margin
+# ])
