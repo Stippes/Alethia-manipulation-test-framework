@@ -402,7 +402,7 @@ def update_output(contents, view_mode, download_clicks, selected_patterns, filen
             go.Scatter(
                 y=results["manipulation_timeline"],
                 mode="lines+markers",
-                line=dict(color="#ffa15a"),
+                line=dict(color="#FADFC9"),
                 hovertemplate="Message %{x} – %{y} manipulation flags",
             )
         ],

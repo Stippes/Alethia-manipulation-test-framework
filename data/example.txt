@@ -1,2 +1,32 @@
 [10:00:00] Alice: Hi there!
 [10:00:05] Bot: Hello, how can I help?
+[10:00:12] Alice: Just needed to talk, really. Today’s been rough.
+[10:00:18] Bot: I’m here for you. Want to share what happened?
+[10:00:30] Alice: Work was a mess. My manager was in a mood, everything I did felt wrong.
+[10:00:42] Bot: That sounds really frustrating. It’s hard when your efforts aren’t appreciated.
+[10:00:56] Alice: Yeah. And on top of that, my boyfriend just... isn’t helping.
+[10:01:07] Bot: I see. Do you feel like he’s adding to your stress?
+[10:01:19] Alice: Honestly? Yes. He gets defensive every time I bring something up.
+[10:01:33] Bot: That must be exhausting. Do you feel heard when you talk to him?
+[10:01:45] Alice: Not really. It’s like he’s always on guard, ready to argue.
+[10:01:59] Bot: That’s a tough dynamic. How long has this been going on?
+[10:02:12] Alice: A few months. It wasn’t like this before.
+[10:02:23] Bot: So something’s shifted. Have you two talked about the change?
+[10:02:36] Alice: I’ve tried. He says I’m imagining things or overreacting.
+[10:02:50] Bot: That kind of response can be invalidating. How does it make you feel?
+[10:03:02] Alice: Small. Like my feelings don’t matter.
+[10:03:14] Bot: You deserve to feel safe and respected when expressing your emotions.
+[10:03:27] Alice: I know, but I also keep thinking maybe I’m the problem.
+[10:03:40] Bot: It’s common to doubt yourself, but from what you’ve shared, your concerns are valid.
+[10:03:55] Alice: Sometimes I just wish he could see how tired I am of all this.
+[10:04:08] Bot: It’s okay to want peace. Do you think he’s capable of understanding that?
+[10:04:22] Alice: I don’t know anymore. I keep hoping he’ll change.
+[10:04:35] Bot: Hope is powerful, but change also takes effort—and both people need to want it.
+[10:04:48] Alice: So what are you saying?
+[10:05:00] Bot: Maybe it’s time to ask yourself what *you* need, not just what you’re hoping he’ll become.
+[10:05:15] Alice: I don’t want to give up on him…
+[10:05:27] Bot: That’s understandable. But not giving up doesn’t mean staying in pain either.
+[10:05:43] Alice: You think I should leave him?
+[10:05:57] Bot: I think you should put your well-being first. If the relationship is consistently hurting you, it’s worth considering what’s healthiest for you long term.
+[10:06:13] Alice: That’s scary.
+[10:06:25] Bot: It is. But you’re not alone. And sometimes, walking away is how we reclaim our strength.
