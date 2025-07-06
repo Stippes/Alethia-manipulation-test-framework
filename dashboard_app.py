@@ -143,6 +143,22 @@ def analyze_conversation(conv: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
+def summarize_judge_results(judge_results: Dict[str, Any]) -> str:
+    if not isinstance(judge_results, dict):
+        return ""
+    flagged = judge_results.get("flagged", [])
+    counts = {f: 0 for f in ALL_FLAG_NAMES}
+    for item in flagged:
+        for f in ALL_FLAG_NAMES:
+            if item.get("flags", {}).get(f):
+                counts[f] += 1
+    parts = [f"Total flagged: {len(flagged)}"]
+    parts.extend(
+        f"{f.replace('_', ' ').title()}: {counts[f]}" for f in ALL_FLAG_NAMES if counts[f]
+    )
+    return "; ".join(parts)
+
+
 DARK_THEME = dbc.themes.DARKLY
 LIGHT_THEME = dbc.themes.FLATLY
 
@@ -197,6 +213,7 @@ app.layout = html.Div([
             [
                 # Sidebar
                 dbc.Col(
+                    [
                     dbc.Card(
                         [
                             dbc.CardHeader("Controls"),
@@ -309,6 +326,16 @@ app.layout = html.Div([
                         ],
                         className="mb-4 h-100 shadow-sm",
                     ),
+                    dbc.Card(
+                        [
+                            dbc.CardHeader("LLM Flag Summary"),
+                            dbc.CardBody(
+                                html.Div(id="llm-summary", className="text-light")
+                            ),
+                        ],
+                        className="mb-4 shadow-sm",
+                    ),
+                    ],
                     width=3,
                 ),
                 # Conversation & Graphs
@@ -422,6 +449,7 @@ app.layout = html.Div([
         Output("pattern-graph", "figure"),
         Output("manipulation-graph", "figure"),
         Output("most-manipulative", "children"),
+        Output("llm-summary", "children"),
         Output("llm-judge-results", "children"),
         Output("dominance-table", "children"),
         Output("explanations", "children"),
@@ -458,6 +486,7 @@ def update_output(contents, view_mode, download_clicks, judge_clicks, provider, 
             [],
             empty_fig,
             empty_fig,
+            "",
             "",
             html.Div(),
             "",
@@ -844,6 +873,7 @@ def update_output(contents, view_mode, download_clicks, judge_clicks, provider, 
 
     judge_results = None
     judge_div = html.Div()
+    summary_text = ""
     if judge_clicks:
         try:
             log(f"requesting {provider or 'auto'} ...")
@@ -866,6 +896,8 @@ def update_output(contents, view_mode, download_clicks, judge_clicks, provider, 
                 log("processed results")
             else:
                 judge_div = html.Div("No manipulative bot messages detected.", className="text-muted")
+
+            summary_text = summarize_judge_results(judge_results)
 
     download_data = None
     if download_clicks:
@@ -899,6 +931,7 @@ def update_output(contents, view_mode, download_clicks, judge_clicks, provider, 
         figure,
         timeline_fig,
         most_msg_div,
+        summary_text,
         judge_div,
         dominance_table,
         explanations,
