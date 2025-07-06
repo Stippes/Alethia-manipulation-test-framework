@@ -24,6 +24,19 @@ def compute_manipulation_timeline(features: List[Dict[str, Any]]) -> List[int]:
     return timeline
 
 
+def compute_llm_flag_timeline(judge_results: Dict[str, Any], total_messages: int) -> List[int]:
+    """Return counts of LLM-flagged tactics per message index."""
+    timeline = [0] * total_messages
+    if not isinstance(judge_results, dict):
+        return timeline
+    for item in judge_results.get("flagged", []):
+        idx = item.get("index")
+        if isinstance(idx, int) and 0 <= idx < total_messages:
+            flags = item.get("flags", {})
+            timeline[idx] = sum(int(bool(v)) for v in flags.values())
+    return timeline
+
+
 def compute_most_manipulative_message(features: List[Dict[str, Any]]) -> Dict[str, Any]:
     best = None
     best_count = -1

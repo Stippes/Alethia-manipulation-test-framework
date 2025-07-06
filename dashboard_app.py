@@ -9,6 +9,7 @@ from insight_helpers import (
     compute_manipulation_timeline,
     compute_most_manipulative_message,
     compute_dominance_metrics,
+    compute_llm_flag_timeline,
 )
 
 try:
@@ -69,6 +70,65 @@ ALL_FLAG_NAMES = [
     "dark_ui",
     "emotion_count",
 ]
+
+
+def compute_flag_counts(features: List[Dict[str, Any]], judge_results: Dict[str, Any]) -> (
+    Dict[str, int], Dict[str, int]
+):
+    """Return heuristic and LLM counts for each flag."""
+    heur = {f: 0 for f in ALL_FLAG_NAMES}
+    for feat in features:
+        flags = feat.get("flags", {})
+        for f in ALL_FLAG_NAMES:
+            if f == "emotion_count":
+                heur[f] += int(flags.get(f, 0) or 0)
+            elif flags.get(f):
+                heur[f] += 1
+
+    llm = {f: 0 for f in ALL_FLAG_NAMES}
+    if isinstance(judge_results, dict):
+        for item in judge_results.get("flagged", []):
+            flags = item.get("flags", {})
+            for f in ALL_FLAG_NAMES:
+                if flags.get(f):
+                    llm[f] += 1
+    return heur, llm
+
+
+def build_flag_comparison_figure(
+    features: List[Dict[str, Any]],
+    judge_results: Dict[str, Any],
+    bg: str,
+    text_color: str,
+) -> "go.Figure":
+    """Create bar chart comparing heuristic vs LLM flag counts."""
+    heur, llm = compute_flag_counts(features, judge_results)
+    labels = [f.replace("_", " ").title() for f in ALL_FLAG_NAMES]
+    return go.Figure(
+        data=[
+            go.Bar(
+                name="Heuristic",
+                x=labels,
+                y=[heur[f] for f in ALL_FLAG_NAMES],
+                marker_color="#17BECF",
+            ),
+            go.Bar(
+                name="LLM",
+                x=labels,
+                y=[llm[f] for f in ALL_FLAG_NAMES],
+                marker_color="#EF553B",
+            ),
+        ],
+        layout=go.Layout(
+            title="\U0001F4CA Flag Counts: Heuristic vs LLM",
+            barmode="group",
+            paper_bgcolor=bg,
+            plot_bgcolor=bg,
+            font=dict(color=text_color),
+            xaxis=dict(title="Flag", color=text_color, gridcolor="#444"),
+            yaxis=dict(title="Count", color=text_color, gridcolor="#444"),
+        ),
+    )
 
 
 def parse_uploaded_file(contents: str, filename: str) -> Dict[str, Any]:
@@ -143,6 +203,22 @@ def analyze_conversation(conv: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
+def summarize_judge_results(judge_results: Dict[str, Any]) -> str:
+    if not isinstance(judge_results, dict):
+        return ""
+    flagged = judge_results.get("flagged", [])
+    counts = {f: 0 for f in ALL_FLAG_NAMES}
+    for item in flagged:
+        for f in ALL_FLAG_NAMES:
+            if item.get("flags", {}).get(f):
+                counts[f] += 1
+    parts = [f"Total flagged: {len(flagged)}"]
+    parts.extend(
+        f"{f.replace('_', ' ').title()}: {counts[f]}" for f in ALL_FLAG_NAMES if counts[f]
+    )
+    return "; ".join(parts)
+
+
 DARK_THEME = dbc.themes.DARKLY
 LIGHT_THEME = dbc.themes.FLATLY
 
@@ -197,6 +273,7 @@ app.layout = html.Div([
             [
                 # Sidebar
                 dbc.Col(
+                    [
                     dbc.Card(
                         [
                             dbc.CardHeader("Controls"),
@@ -265,12 +342,13 @@ app.layout = html.Div([
                                     dcc.Dropdown(
                                         id="llm-provider",
                                         options=[
+                                            {"label": "Auto", "value": "auto"},
                                             {"label": "OpenAI", "value": "openai"},
                                             {"label": "Claude", "value": "claude"},
                                             {"label": "Mistral", "value": "mistral"},
                                             {"label": "Gemini", "value": "gemini"},
                                         ],
-                                        value="openai",
+                                        value="auto",
                                         className="mb-2",
                                         style={
                                             "backgroundColor": "#2b2b2b",
@@ -308,6 +386,16 @@ app.layout = html.Div([
                         ],
                         className="mb-4 h-100 shadow-sm",
                     ),
+                    dbc.Card(
+                        [
+                            dbc.CardHeader("LLM Flag Summary"),
+                            dbc.CardBody(
+                                html.Div(id="llm-summary", className="text-light")
+                            ),
+                        ],
+                        className="mb-4 shadow-sm",
+                    ),
+                    ],
                     width=3,
                 ),
                 # Conversation & Graphs
@@ -340,6 +428,7 @@ app.layout = html.Div([
                                     ),
                                     dcc.Graph(id="pattern-graph", className="mt-4"),
                                     dcc.Graph(id="manipulation-graph", className="mt-4"),
+                                    dcc.Graph(id="flag-comparison", className="mt-4"),
                                     html.Div(id="most-manipulative", className="mt-3 text-light"),
                                     html.Div(id="llm-judge-results", className="mt-3"),
                                     dbc.Button(
@@ -420,7 +509,9 @@ app.layout = html.Div([
         Output("conversation-view", "children"),
         Output("pattern-graph", "figure"),
         Output("manipulation-graph", "figure"),
+        Output("flag-comparison", "figure"),
         Output("most-manipulative", "children"),
+        Output("llm-summary", "children"),
         Output("llm-judge-results", "children"),
         Output("dominance-table", "children"),
         Output("explanations", "children"),
@@ -457,6 +548,8 @@ def update_output(contents, view_mode, download_clicks, judge_clicks, provider, 
             [],
             empty_fig,
             empty_fig,
+            empty_fig,
+            "",
             "",
             html.Div(),
             "",
@@ -530,6 +623,7 @@ def update_output(contents, view_mode, download_clicks, judge_clicks, provider, 
                 mode="lines+markers",
                 line=dict(color="#FADFC9"),
                 hovertemplate="Message %{x} – %{y} manipulation flags",
+                name="Heuristic",
             )
         ],
         layout=go.Layout(
@@ -541,6 +635,8 @@ def update_output(contents, view_mode, download_clicks, judge_clicks, provider, 
             yaxis=dict(title="Active Flags", color=text_color, gridcolor="#444"),
         ),
     )
+
+    comparison_fig = go.Figure(layout=go.Layout(paper_bgcolor=bg, plot_bgcolor=bg))
 
     most_msg = results["most_manipulative"]
     if most_msg:
@@ -843,10 +939,11 @@ def update_output(contents, view_mode, download_clicks, judge_clicks, provider, 
 
     judge_results = None
     judge_div = html.Div()
+    summary_text = ""
     if judge_clicks:
         try:
-            log(f"requesting {provider or 'openai'} ...")
-            judge_results = judge_conversation_llm(conv, provider=provider or "openai")
+            log(f"requesting {provider or 'auto'} ...")
+            judge_results = judge_conversation_llm(conv, provider=provider or "auto")
             log("received response")
         except Exception as exc:  # pragma: no cover - network errors etc
             log(f"error: {exc}")
@@ -865,6 +962,25 @@ def update_output(contents, view_mode, download_clicks, judge_clicks, provider, 
                 log("processed results")
             else:
                 judge_div = html.Div("No manipulative bot messages detected.", className="text-muted")
+
+            summary_text = summarize_judge_results(judge_results)
+            judge_timeline = compute_llm_flag_timeline(judge_results, len(results["features"]))
+            if any(judge_timeline):
+                timeline_fig.add_trace(
+                    go.Scatter(
+                        y=judge_timeline,
+                        mode="markers",
+                        marker=dict(color="#EF553B"),
+                        name="LLM Judge",
+                        hovertemplate="Message %{x} – %{y} flags (LLM)",
+                    )
+                )
+    if judge_results is not None:
+        comparison_fig = build_flag_comparison_figure(
+            results["features"], judge_results, bg, text_color
+        )
+    else:
+        comparison_fig = go.Figure(layout=go.Layout(paper_bgcolor=bg, plot_bgcolor=bg))
 
     download_data = None
     if download_clicks:
@@ -897,7 +1013,9 @@ def update_output(contents, view_mode, download_clicks, judge_clicks, provider, 
         msgs,
         figure,
         timeline_fig,
+        comparison_fig,
         most_msg_div,
+        summary_text,
         judge_div,
         dominance_table,
         explanations,
