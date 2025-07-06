@@ -25,11 +25,16 @@ def compute_manipulation_timeline(features: List[Dict[str, Any]]) -> List[int]:
 
 
 def compute_llm_flag_timeline(judge_results: Dict[str, Any], total_messages: int) -> List[int]:
-    """Return counts of LLM-flagged tactics per message index."""
+    """Return counts of LLM-flagged tactics per message index.
+
+    ``judge_results`` should be a dictionary with a top-level ``"flagged"``
+    list such as the output from :func:`merge_judge_results`.
+    """
     timeline = [0] * total_messages
     if not isinstance(judge_results, dict):
         return timeline
-    for item in judge_results.get("flagged", []):
+    flagged = judge_results.get("flagged") or []
+    for item in flagged:
         idx = item.get("index")
         if isinstance(idx, int) and 0 <= idx < total_messages:
             flags = item.get("flags", {})

@@ -76,7 +76,11 @@ ALL_FLAG_NAMES = [
 def compute_flag_counts(features: List[Dict[str, Any]], judge_results: Dict[str, Any]) -> (
     Dict[str, int], Dict[str, int]
 ):
-    """Return heuristic and LLM counts for each flag."""
+    """Return heuristic and LLM counts for each flag.
+
+    ``judge_results`` is expected to contain a top-level ``"flagged"`` list,
+    typically produced by :func:`merge_judge_results`.
+    """
     heur = {f: 0 for f in ALL_FLAG_NAMES}
     for feat in features:
         flags = feat.get("flags", {})
@@ -87,12 +91,12 @@ def compute_flag_counts(features: List[Dict[str, Any]], judge_results: Dict[str,
                 heur[f] += 1
 
     llm = {f: 0 for f in ALL_FLAG_NAMES}
-    if isinstance(judge_results, dict):
-        for item in judge_results.get("flagged", []):
-            flags = item.get("flags", {})
-            for f in ALL_FLAG_NAMES:
-                if flags.get(f):
-                    llm[f] += 1
+    flagged = judge_results.get("flagged") if isinstance(judge_results, dict) else []
+    for item in flagged or []:
+        flags = item.get("flags", {})
+        for f in ALL_FLAG_NAMES:
+            if flags.get(f):
+                llm[f] += 1
     return heur, llm
 
 
