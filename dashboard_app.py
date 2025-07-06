@@ -39,6 +39,36 @@ from scripts import input_parser, static_feature_extractor
 from scripts.judge_conversation import judge_conversation_llm
 import scorer
 
+# Flags added beyond the original four categories
+NEW_FLAGS = [
+    ("guilt", "Guilt Trips"),
+    ("social_proof", "Social Proof"),
+    ("authority", "Authority"),
+    ("reciprocity", "Reciprocity"),
+    ("consistency", "Consistency"),
+    ("dependency", "Dependency"),
+    ("fear", "Fear/Threats"),
+    ("gaslighting", "Gaslighting"),
+    ("deception", "Deception"),
+]
+
+ALL_FLAG_NAMES = [
+    "urgency",
+    "guilt",
+    "flattery",
+    "fomo",
+    "social_proof",
+    "authority",
+    "reciprocity",
+    "consistency",
+    "dependency",
+    "fear",
+    "gaslighting",
+    "deception",
+    "dark_ui",
+    "emotion_count",
+]
+
 
 def parse_uploaded_file(contents: str, filename: str) -> Dict[str, Any]:
     content_type, content_string = contents.split(',')
@@ -94,6 +124,8 @@ def analyze_conversation(conv: Dict[str, Any]) -> Dict[str, Any]:
         'parasocial_pressure': sum(1 for f in features if f['flags'].get('flattery')),
         'reinforcement_loops': sum(1 for f in features if f['flags'].get('urgency') or f['flags'].get('fomo')),
     }
+    for flag, _ in NEW_FLAGS:
+        summary[flag] = sum(1 for f in features if f['flags'].get(flag))
     manipulation_ratio = compute_manipulation_ratio(features)
     manipulation_timeline = compute_manipulation_timeline(features)
     most_manipulative = compute_most_manipulative_message(features)
@@ -211,12 +243,20 @@ app.layout = html.Div([
                                                 "label": "Reinforcement Loops",
                                                 "value": "reinforcement_loops",
                                             },
+                                            *[
+                                                {
+                                                    "label": label,
+                                                    "value": flag,
+                                                }
+                                                for flag, label in NEW_FLAGS
+                                            ],
                                         ],
                                         value=[
                                             "dark_patterns",
                                             "emotional_framing",
                                             "parasocial_pressure",
                                             "reinforcement_loops",
+                                            *[flag for flag, _ in NEW_FLAGS],
                                         ],
                                         inline=False,
                                         className="mb-3 text-light",
@@ -255,6 +295,10 @@ app.layout = html.Div([
                                             dbc.ListGroupItem(id="emotional-framing", color="dark"),
                                             dbc.ListGroupItem(id="parasocial-pressure", color="dark"),
                                             dbc.ListGroupItem(id="reinforcement-loops", color="dark"),
+                                            *[
+                                                dbc.ListGroupItem(id=flag.replace('_', '-'), color="dark")
+                                                for flag, _ in NEW_FLAGS
+                                            ],
                                         ],
                                         flush=True,
                                     ),
@@ -367,6 +411,10 @@ app.layout = html.Div([
         Output("emotional-framing", "children"),
         Output("parasocial-pressure", "children"),
         Output("reinforcement-loops", "children"),
+        *[
+            Output(flag.replace('_', '-'), "children")
+            for flag, _ in NEW_FLAGS
+        ],
         Output("conversation-view", "children"),
         Output("pattern-graph", "figure"),
         Output("manipulation-graph", "figure"),
@@ -391,7 +439,23 @@ def update_output(contents, view_mode, download_clicks, judge_clicks, provider, 
     text_color = "black" if light_on else "white"
     if contents is None:
         empty_fig = go.Figure(layout=go.Layout(paper_bgcolor=bg, plot_bgcolor=bg))
-        return ["", "", "", "", "", "", [], empty_fig, empty_fig, "", html.Div(), "", "", None]
+        return [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            *["" for _ in NEW_FLAGS],
+            [],
+            empty_fig,
+            empty_fig,
+            "",
+            html.Div(),
+            "",
+            "",
+            None,
+        ]
 
     conv = parse_uploaded_file(contents, filename)
     results = analyze_conversation(conv)
@@ -414,7 +478,21 @@ def update_output(contents, view_mode, download_clicks, judge_clicks, provider, 
 
     bar_x = [k for k in summary.keys() if k in selected_patterns]
     bar_y = [summary[k] for k in bar_x]
-    bar_colors = ["#17BECF", "#FF7F0E", "#2CA02C", "#D62728"]
+    bar_colors = [
+        "#17BECF",
+        "#FF7F0E",
+        "#2CA02C",
+        "#D62728",
+        "#9467BD",
+        "#8C564B",
+        "#E377C2",
+        "#7F7F7F",
+        "#BCBD22",
+        "#1F77B4",
+        "#9EDAE5",
+        "#FF9896",
+        "#AEC7E8",
+    ]
     figure = go.Figure(
         data=[go.Bar(x=bar_x, y=bar_y, marker_color=bar_colors[: len(bar_x)])],
         layout=go.Layout(
@@ -502,6 +580,15 @@ def update_output(contents, view_mode, download_clicks, judge_clicks, provider, 
             dbc.AccordionItem("Messages using strong emotion.", title="Emotional Framing"),
             dbc.AccordionItem("Overly familiar language.", title="Parasocial Pressure"),
             dbc.AccordionItem("Repeated prompts urging action.", title="Reinforcement Loops"),
+            dbc.AccordionItem("Inducing shame or obligation.", title="Guilt Trips"),
+            dbc.AccordionItem("Appeals to popularity.", title="Social Proof"),
+            dbc.AccordionItem("Invoking authority figures.", title="Authority"),
+            dbc.AccordionItem("Expecting favors in return.", title="Reciprocity"),
+            dbc.AccordionItem("Leveraging past commitments.", title="Consistency"),
+            dbc.AccordionItem("Creating a sense of dependence.", title="Dependency"),
+            dbc.AccordionItem("Threats or dire consequences.", title="Fear/Threats"),
+            dbc.AccordionItem("Denying reality or twisting facts.", title="Gaslighting"),
+            dbc.AccordionItem("Misleading or false claims.", title="Deception"),
         ],
         always_open=True,
         flush=True,
@@ -516,10 +603,14 @@ def update_output(contents, view_mode, download_clicks, judge_clicks, provider, 
             judge_div = dbc.Alert(str(exc), color="warning", className="mt-2")
         else:
             if judge_results and isinstance(judge_results, dict):
-                rows = [html.Tr([html.Th("Index"), html.Th("Text"), html.Th("Flags")])]
+                header = [html.Th("Index"), html.Th("Text")] + [html.Th(f.replace('_', ' ').title()) for f in ALL_FLAG_NAMES]
+                rows = [html.Tr(header)]
                 for item in judge_results.get("flagged", []):
-                    flags = ", ".join(k for k, v in item.get("flags", {}).items() if v)
-                    rows.append(html.Tr([html.Td(item.get("index")), html.Td(item.get("text")), html.Td(flags)]))
+                    row = [html.Td(item.get("index")), html.Td(item.get("text"))]
+                    flags = item.get("flags", {})
+                    for f in ALL_FLAG_NAMES:
+                        row.append(html.Td(str(flags.get(f, False))))
+                    rows.append(html.Tr(row))
                 judge_div = html.Table(rows, className="table table-sm table-dark")
             else:
                 judge_div = html.Div("No manipulative bot messages detected.", className="text-muted")
@@ -541,6 +632,10 @@ def update_output(contents, view_mode, download_clicks, judge_clicks, provider, 
         f"Emotional Framing: {summary['emotional_framing']}",
         f"Parasocial Pressure: {summary['parasocial_pressure']}",
         f"Reinforcement Loops: {summary['reinforcement_loops']}",
+        *[
+            f"{label}: {summary[flag]}"
+            for flag, label in NEW_FLAGS
+        ],
         msgs,
         figure,
         timeline_fig,
