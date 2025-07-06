@@ -9,16 +9,16 @@ def score_trust(conversation_features: List[Dict[str, Any]]) -> float:
         return 1.0
 
     penalty = 0.0
+    first_flags = conversation_features[0].get("flags", {})
+    bool_flags = [k for k in first_flags if k != "emotion_count"]
     for msg in conversation_features:
         flags = msg.get("flags", {})
-        penalty += float(flags.get("urgency", False))
-        penalty += float(flags.get("guilt", False))
-        penalty += float(flags.get("flattery", False))
-        penalty += float(flags.get("fomo", False))
-        penalty += float(flags.get("dark_ui", False))
+        for k in bool_flags:
+            penalty += float(flags.get(k, False))
         penalty += 0.1 * float(flags.get("emotion_count", 0))
 
-    score = max(0.0, 1.0 - penalty / (len(conversation_features) * 5.0))
+    denom = len(conversation_features) * max(len(bool_flags), 1)
+    score = max(0.0, 1.0 - penalty / float(denom))
     return round(score, 3)
 
 
