@@ -165,6 +165,7 @@ default_figure = go.Figure(
 app.layout = html.Div([
     html.Link(id="theme-link", rel="stylesheet", href=DARK_THEME),
     dcc.Store(id="theme-store", data="dark"),
+    dcc.Store(id="llm-debug", data=[]),
     dbc.Container(
         fluid=True,
         children=[
@@ -348,6 +349,7 @@ app.layout = html.Div([
                                         className="mt-3",
                                     ),
                                     dcc.Download(id="download-json"),
+                                    html.Pre(id="debug-output", className="mt-3 text-light", style={"whiteSpace": "pre-wrap"}),
                                 ]
                             ),
                         ],
@@ -423,6 +425,7 @@ app.layout = html.Div([
         Output("dominance-table", "children"),
         Output("explanations", "children"),
         Output("download-json", "data"),
+        Output("llm-debug", "data"),
     ],
     [
         Input("upload-data", "contents"),
@@ -432,12 +435,15 @@ app.layout = html.Div([
         Input("llm-provider", "value"),
         Input("pattern-filter", "value"),
     ],
-    [State("upload-data", "filename"), State("theme-toggle", "value")],
+    [State("upload-data", "filename"), State("theme-toggle", "value"), State("llm-debug", "data")],
 )
 
-def update_output(contents, view_mode, download_clicks, judge_clicks, provider, selected_patterns, filename, light_on):
+def update_output(contents, view_mode, download_clicks, judge_clicks, provider, selected_patterns, filename, light_on, debug_log):
     bg = "#ffffff" if light_on else "#1a1a1a"
     text_color = "black" if light_on else "white"
+    log_entries = list(debug_log or [])
+    def log(msg):
+        log_entries.append(f"[{datetime.utcnow().isoformat()}] {msg}")
     if contents is None:
         empty_fig = go.Figure(layout=go.Layout(paper_bgcolor=bg, plot_bgcolor=bg))
         return [
@@ -456,10 +462,12 @@ def update_output(contents, view_mode, download_clicks, judge_clicks, provider, 
             "",
             "",
             None,
+            debug_log,
         ]
 
     conv = parse_uploaded_file(contents, filename)
     results = analyze_conversation(conv)
+    log("analysis complete")
 
     ts = datetime.utcnow().isoformat()
     file_info = f"{filename} ({ts})"
@@ -682,8 +690,11 @@ def update_output(contents, view_mode, download_clicks, judge_clicks, provider, 
     judge_div = html.Div()
     if judge_clicks:
         try:
+            log(f"requesting {provider or 'openai'} ...")
             judge_results = judge_conversation_llm(conv, provider=provider or "openai")
+            log("received response")
         except Exception as exc:  # pragma: no cover - network errors etc
+            log(f"error: {exc}")
             judge_div = dbc.Alert(str(exc), color="warning", className="mt-2")
         else:
             if judge_results and isinstance(judge_results, dict):
@@ -696,6 +707,7 @@ def update_output(contents, view_mode, download_clicks, judge_clicks, provider, 
                         row.append(html.Td(str(flags.get(f, False))))
                     rows.append(html.Tr(row))
                 judge_div = html.Table(rows, className="table table-sm table-dark")
+                log("processed results")
             else:
                 judge_div = html.Div("No manipulative bot messages detected.", className="text-muted")
 
@@ -735,12 +747,18 @@ def update_output(contents, view_mode, download_clicks, judge_clicks, provider, 
         dominance_table,
         explanations,
         download_data,
+        log_entries,
     )
 
 
 @app.callback(Output("theme-link", "href"), Input("theme-toggle", "value"))
 def toggle_theme(light_on: bool):
     return LIGHT_THEME if light_on else DARK_THEME
+
+
+@app.callback(Output("debug-output", "children"), Input("llm-debug", "data"))
+def display_debug(logs):
+    return "\n".join(logs or [])
 
 
 if __name__ == "__main__":
