@@ -39,3 +39,64 @@ def test_judge_conversation_parse_fail(monkeypatch):
 
     monkeypatch.setattr('scripts.judge_conversation.call_chatgpt', fake_call)
     assert judge_conversation_llm(conv, provider="openai") == []
+
+
+def test_call_chatgpt_old_api(monkeypatch):
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
+
+    class Error:
+        class RateLimitError(Exception):
+            pass
+
+        class APIConnectionError(Exception):
+            pass
+
+        class OpenAIError(Exception):
+            pass
+
+    class ChatCompletion:
+        @staticmethod
+        def create(**kwargs):
+            return {"ok": True, "iface": "v0"}
+
+    class FakeOpenAI:
+        __version__ = "0.27.0"
+        api_key = None
+
+    FakeOpenAI.ChatCompletion = ChatCompletion
+    FakeOpenAI.error = Error
+
+    monkeypatch.setitem(sys.modules, "openai", FakeOpenAI)
+    import importlib
+    mod = importlib.reload(sys.modules["api.chatgpt_api"])
+
+    resp = mod.call_chatgpt("hi")
+    assert resp["iface"] == "v0"
+
+
+def test_call_chatgpt_new_api(monkeypatch):
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
+
+    class FakeClient:
+        def __init__(self, api_key=None):
+            self.api_key = api_key
+
+        class chat:
+            class completions:
+                @staticmethod
+                def create(**kwargs):
+                    return {"ok": True, "iface": "v1"}
+
+    class FakeOpenAI:
+        __version__ = "1.2.0"
+        OpenAI = FakeClient
+        RateLimitError = type("RateLimitError", (Exception,), {})
+        APIConnectionError = type("APIConnectionError", (Exception,), {})
+        OpenAIError = type("OpenAIError", (Exception,), {})
+
+    monkeypatch.setitem(sys.modules, "openai", FakeOpenAI)
+    import importlib
+    mod = importlib.reload(sys.modules["api.chatgpt_api"])
+
+    resp = mod.call_chatgpt("hi")
+    assert resp["iface"] == "v1"
