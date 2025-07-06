@@ -1,9 +1,17 @@
 """Generate a simple HTML dashboard summarizing pytest results."""
 
+import os
+import sys
 import json
 import subprocess
 from html import escape
 from pathlib import Path
+import logging
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+from logging_utils import setup_logging
+
+logger = logging.getLogger(__name__)
 
 
 def run_tests(json_path: str = "test_results.json") -> None:
@@ -36,9 +44,10 @@ def build_dashboard(json_path: str = "test_results.json", html_path: str = "dash
 
 
 def main() -> None:
+    setup_logging()
     run_tests()
     build_dashboard()
-    print("Dashboard written to dashboard.html")
+    logger.info("Dashboard written to dashboard.html")
 
 
 if __name__ == "__main__":

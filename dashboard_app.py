@@ -3,6 +3,8 @@ import io
 import json
 from datetime import datetime
 from typing import Dict, Any, List
+import logging
+from logging_utils import setup_logging
 
 from insight_helpers import (
     compute_manipulation_ratio,
@@ -30,6 +32,9 @@ except Exception:  # pragma: no cover - make optional for tests
     dcc = html = Input = Output = State = _Dummy()
     go = _Dummy()
     dbc = _Dummy()
+
+setup_logging()
+logger = logging.getLogger(__name__)
 
 
 # pick one of the Bootswatch themes below:
@@ -137,6 +142,7 @@ def build_flag_comparison_figure(
 
 
 def parse_uploaded_file(contents: str, filename: str) -> Dict[str, Any]:
+    logger.debug("Parsing uploaded file %s", filename)
     content_type, content_string = contents.split(',')
     decoded = base64.b64decode(content_string)
     name = filename.lower()
@@ -181,6 +187,7 @@ def parse_uploaded_file(contents: str, filename: str) -> Dict[str, Any]:
 
 
 def analyze_conversation(conv: Dict[str, Any]) -> Dict[str, Any]:
+    logger.info("Analyzing conversation %s", conv.get('conversation_id'))
     features = static_feature_extractor.extract_conversation_features(conv)
     trust_score = scorer.score_trust(features)
     risk = scorer.compute_risk_score(features)
@@ -197,6 +204,7 @@ def analyze_conversation(conv: Dict[str, Any]) -> Dict[str, Any]:
     most_manipulative = compute_most_manipulative_message(features)
     dominance_metrics = compute_dominance_metrics(features)
 
+    logger.info("Analysis produced risk %s", risk)
     return {
         'features': features,
         'risk': risk,
@@ -242,6 +250,41 @@ default_figure = go.Figure(
         yaxis=dict(title="Count", color="white"),
     ),
 )
+
+default_timeline = go.Figure(
+    data=[go.Scatter(x=[], y=[])],
+    layout=go.Layout(
+        title="\U0001F4CA Manipulation Intensity Over Time",
+        paper_bgcolor="#1a1a1a",
+        plot_bgcolor="#1a1a1a",
+        font=dict(color="white"),
+        xaxis=dict(title="Message Index", color="white"),
+        yaxis=dict(title="Active Flags", color="white"),
+    ),
+)
+
+default_comparison = go.Figure(
+    data=[go.Bar(x=[], y=[])],
+    layout=go.Layout(
+        title="\U0001F4CA Flag Counts: Heuristic vs LLM",
+        paper_bgcolor="#1a1a1a",
+        plot_bgcolor="#1a1a1a",
+        font=dict(color="white"),
+        xaxis=dict(title="Flag", color="white"),
+        yaxis=dict(title="Count", color="white"),
+    ),
+)
+
+
+def create_empty_figure(title: str, bg: str, text_color: str) -> "go.Figure":
+    return go.Figure(
+        layout=go.Layout(
+            title=title,
+            paper_bgcolor=bg,
+            plot_bgcolor=bg,
+            font=dict(color=text_color),
+        )
+    )
 
 app.layout = html.Div([
     html.Link(id="theme-link", rel="stylesheet", href=DARK_THEME),
@@ -539,21 +582,24 @@ def update_output(contents, view_mode, download_clicks, judge_clicks, provider, 
     text_color = "black" if light_on else "white"
     log_entries = list(debug_log or [])
     def log(msg):
+        logger.info(msg)
         log_entries.append(f"[{datetime.utcnow().isoformat()}] {msg}")
     if contents is None:
-        empty_fig = go.Figure(layout=go.Layout(paper_bgcolor=bg, plot_bgcolor=bg))
+        empty_fig = create_empty_figure("Waiting for upload", bg, text_color)
+        timeline_empty = create_empty_figure("Waiting for upload", bg, text_color)
+        comparison_empty = create_empty_figure("Waiting for upload", bg, text_color)
         return [
-            "",
+            "No file loaded",
             "",
             "",
             "",
             "",
             "",
             *["" for _ in NEW_FLAGS],
-            [],
+            [html.Div("Upload a conversation to begin", className="text-muted")],
             empty_fig,
-            empty_fig,
-            empty_fig,
+            timeline_empty,
+            comparison_empty,
             "",
             "",
             html.Div(),
@@ -566,6 +612,7 @@ def update_output(contents, view_mode, download_clicks, judge_clicks, provider, 
     conv = parse_uploaded_file(contents, filename)
     results = analyze_conversation(conv)
     log("analysis complete")
+    logger.debug("Finished analysis of uploaded file")
 
     ts = datetime.utcnow().isoformat()
     file_info = f"{filename} ({ts})"
@@ -641,7 +688,7 @@ def update_output(contents, view_mode, download_clicks, judge_clicks, provider, 
         ),
     )
 
-    comparison_fig = go.Figure(layout=go.Layout(paper_bgcolor=bg, plot_bgcolor=bg))
+    comparison_fig = create_empty_figure("Flag Counts: Heuristic vs LLM", bg, text_color)
 
     most_msg = results["most_manipulative"]
     if most_msg:
@@ -948,10 +995,13 @@ def update_output(contents, view_mode, download_clicks, judge_clicks, provider, 
     if judge_clicks:
         try:
             log(f"requesting {provider or 'auto'} ...")
+            logger.debug("Sending judge request")
             judge_results = judge_conversation_llm(conv, provider=provider or "auto")
             log("received response")
+            logger.debug("Judge response parsed")
         except Exception as exc:  # pragma: no cover - network errors etc
             log(f"error: {exc}")
+            logger.warning("Judge request failed: %s", exc)
             judge_div = dbc.Alert(str(exc), color="warning", className="mt-2")
         else:
             if judge_results and isinstance(judge_results, dict):
@@ -965,6 +1015,7 @@ def update_output(contents, view_mode, download_clicks, judge_clicks, provider, 
                     rows.append(html.Tr(row))
                 judge_div = html.Table(rows, className="table table-sm table-dark")
                 log("processed results")
+                logger.debug("Merged judge results for plotting")
             else:
                 judge_div = html.Div("No manipulative bot messages detected.", className="text-muted")
 
@@ -987,7 +1038,7 @@ def update_output(contents, view_mode, download_clicks, judge_clicks, provider, 
             results["features"], merged_for_plots, bg, text_color
         )
     else:
-        comparison_fig = go.Figure(layout=go.Layout(paper_bgcolor=bg, plot_bgcolor=bg))
+        comparison_fig = create_empty_figure("Flag Counts: Heuristic vs LLM", bg, text_color)
 
     download_data = None
     if download_clicks:
@@ -1042,4 +1093,5 @@ def display_debug(logs):
 
 
 if __name__ == "__main__":
+    setup_logging()
     app.run(debug=False)

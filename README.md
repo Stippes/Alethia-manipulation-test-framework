@@ -20,6 +20,14 @@ CLAUDE_API_KEY="sk-..."
 
 Make sure to add `.env` to `.gitignore` so you never commit your secrets.
 
+## Logging
+
+Application modules use Python's ``logging`` package. Calling ``setup_logging``
+creates a ``logs/`` directory and writes rotating log files under
+``logs/framework.log``. Console output is also enabled. Entry-point scripts
+invoke this setup automatically. Raw outputs from LLM calls are written to
+``logs/llm_output.log`` via ``get_llm_logger``.
+
 ## Test Dashboard
 
 Run `python scripts/test_dashboard.py` to execute the test suite and generate `dashboard.html`. The HTML file lists each test and its result so you can quickly review the status.

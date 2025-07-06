@@ -4,6 +4,8 @@ import json
 from pathlib import Path
 from typing import Any, Dict
 import os
+import logging
+from logging_utils import setup_logging, get_llm_logger
 
 from api.api_calls import (
     call_chatgpt,
@@ -11,6 +13,10 @@ from api.api_calls import (
     call_mistral,
     call_gemini,
 )
+
+setup_logging()
+logger = logging.getLogger(__name__)
+llm_logger = get_llm_logger()
 
 
 _PROVIDER_MAP = {
@@ -48,6 +54,8 @@ def _judge_single(conversation: Dict[str, Any], provider: str) -> Dict[str, Any]
     if len(messages) >= 500:
         raise ValueError("Conversation must contain fewer than 500 messages")
 
+    logger.info("Judging conversation with %s", provider)
+
     prov_key = _PROVIDER_MAP.get(provider.lower())
     if prov_key is None:
         raise ValueError(f"Unknown provider: {provider}")
@@ -69,8 +77,11 @@ def _judge_single(conversation: Dict[str, Any], provider: str) -> Dict[str, Any]
 
     try:
         content = resp["choices"][0]["message"]["content"]
+        logger.debug("Received response from %s", provider)
+        llm_logger.info("%s: %s", provider, content)
         return json.loads(content)
-    except Exception:
+    except Exception as exc:
+        logger.warning("Failed to parse response from %s: %s", provider, exc)
         return []
 
 
@@ -93,11 +104,14 @@ def judge_conversation_llm(conversation: Dict[str, Any], provider: str = "auto")
         for prov in ["openai", "gemini", "claude", "mistral"]:
             env_var = _API_KEY_ENV.get(prov, "")
             if env_var and os.getenv(env_var):
+                logger.info("Calling provider %s", prov)
                 try:
                     results[prov] = _judge_single(conversation, prov)
                 except Exception:
                     # skip failing providers
+                    logger.warning("Provider %s failed", prov)
                     continue
         return results
 
+    logger.info("Calling single provider %s", provider)
     return _judge_single(conversation, provider)
