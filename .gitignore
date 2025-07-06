@@ -8,3 +8,4 @@ dashboard.html
 test_results.json
 
 old_dashboard.py
+logs/
