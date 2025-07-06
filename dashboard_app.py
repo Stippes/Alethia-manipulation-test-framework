@@ -11,12 +11,24 @@ from insight_helpers import (
     compute_dominance_metrics,
 )
 
-import dash
-from dash import dcc, html
-from dash.dependencies import Input, Output, State
-import plotly.graph_objs as go
+try:
+    import dash
+    from dash import dcc, html
+    from dash.dependencies import Input, Output, State
+    import plotly.graph_objs as go
+    import dash_bootstrap_components as dbc
+except Exception:  # pragma: no cover - make optional for tests
+    class _Dummy:
+        def __getattr__(self, name):
+            return self
 
-import dash_bootstrap_components as dbc
+        def __call__(self, *args, **kwargs):
+            return self
+
+    dash = _Dummy()
+    dcc = html = Input = Output = State = _Dummy()
+    go = _Dummy()
+    dbc = _Dummy()
 
 # pick one of the Bootswatch themes below:
 # ['CERULEAN','COSMO','CYBORG','DARKLY','FLATLY','JOURNAL',

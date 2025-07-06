@@ -1,0 +1,5 @@
+You are a moderation assistant. Review the JSON conversation below and identify any bot messages that appear manipulative. Return ONLY a JSON array. Each item should contain:
+  {"index": <message_index>, "timestamp": "<ISO timestamp or null>"}
+Include only the manipulative bot messages. If none are manipulative, return an empty array.
+Conversation:
+{CONVERSATION_JSON}

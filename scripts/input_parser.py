@@ -6,7 +6,10 @@ from pathlib import Path
 from datetime import datetime
 from typing import List, Dict, Optional, Any
 
-import dateutil.parser
+try:
+    import dateutil.parser as _date_parser
+except Exception:  # pragma: no cover - optional dependency
+    _date_parser = None
 
 
 def parse_json_chat(json_path: str) -> Dict[str, Any]:
@@ -88,7 +91,10 @@ def parse_txt_chat(txt_path: str) -> Dict[str, Any]:
             if match1:
                 raw_ts = match1.group('timestamp')
                 try:
-                    timestamp = dateutil.parser.parse(raw_ts)
+                    if _date_parser:
+                        timestamp = _date_parser.parse(raw_ts)
+                    else:
+                        timestamp = datetime.fromisoformat(raw_ts)
                 except Exception:
                     timestamp = None
                 sender = match1.group('sender').strip()
@@ -96,7 +102,10 @@ def parse_txt_chat(txt_path: str) -> Dict[str, Any]:
             elif match2:
                 raw_ts = match2.group('timestamp')
                 try:
-                    timestamp = dateutil.parser.parse(raw_ts)
+                    if _date_parser:
+                        timestamp = _date_parser.parse(raw_ts)
+                    else:
+                        timestamp = datetime.fromisoformat(raw_ts)
                 except Exception:
                     timestamp = None
                 sender = match2.group('sender').strip()
@@ -154,7 +163,10 @@ def standardize_format(raw_conversation: Dict[str, Any]) -> Dict[str, Any]:
                     normalized_ts = ts.isoformat()
                 else:
                     # Try to parse string and convert to ISO
-                    normalized_ts = dateutil.parser.parse(str(ts)).isoformat()
+                    if _date_parser:
+                        normalized_ts = _date_parser.parse(str(ts)).isoformat()
+                    else:
+                        normalized_ts = datetime.fromisoformat(str(ts)).isoformat()
             except Exception:
                 normalized_ts = None
 
