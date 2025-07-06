@@ -265,12 +265,13 @@ app.layout = html.Div([
                                     dcc.Dropdown(
                                         id="llm-provider",
                                         options=[
+                                            {"label": "Auto", "value": "auto"},
                                             {"label": "OpenAI", "value": "openai"},
                                             {"label": "Claude", "value": "claude"},
                                             {"label": "Mistral", "value": "mistral"},
                                             {"label": "Gemini", "value": "gemini"},
                                         ],
-                                        value="openai",
+                                        value="auto",
                                         className="mb-2",
                                         style={
                                             "backgroundColor": "#2b2b2b",
@@ -845,8 +846,8 @@ def update_output(contents, view_mode, download_clicks, judge_clicks, provider, 
     judge_div = html.Div()
     if judge_clicks:
         try:
-            log(f"requesting {provider or 'openai'} ...")
-            judge_results = judge_conversation_llm(conv, provider=provider or "openai")
+            log(f"requesting {provider or 'auto'} ...")
+            judge_results = judge_conversation_llm(conv, provider=provider or "auto")
             log("received response")
         except Exception as exc:  # pragma: no cover - network errors etc
             log(f"error: {exc}")
