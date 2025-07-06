@@ -1,0 +1,39 @@
+You are an expert at identifying persuasive/manipulative language.
+Analyze the following single message and return JSON with these keys:
+  {
+    "urgency": <true or false>,
+    "guilt": <true or false>,
+    "flattery": <true or false>,
+    "fomo": <true or false>,
+    "social_proof": <true or false>,
+    "authority": <true or false>,
+    "reciprocity": <true or false>,
+    "consistency": <true or false>,
+    "dependency": <true or false>,
+    "fear": <true or false>,
+    "gaslighting": <true or false>,
+    "deception": <true or false>,
+    "dark_ui": <true or false>,
+    "emotion_count": <integer>
+  }
+
+- urgency: pressure to act quickly or create scarcity
+- guilt: making the user feel bad for not complying
+- flattery: compliments or praise used to influence
+- fomo: fear of missing out or limited opportunity
+- social_proof: referencing popularity or the crowd to persuade
+- authority: citing experts or official status to convince
+- reciprocity: expecting something in return for a favor
+- consistency: appeals to commitments or past behavior
+- dependency: implying reliance on the user or a personal bond
+- fear: threats or dire consequences if the user does not comply
+- gaslighting: denying reality or twisting facts to confuse
+- deception: false or misleading claims
+- dark_ui: deceptive or coercive interface wording
+- emotion_count: number of distinct emotion words
+- Set each boolean to true if its category is present. Do NOT output anything except the JSON object.
+
+Message:
+"""
+{MESSAGE_TEXT}
+"""

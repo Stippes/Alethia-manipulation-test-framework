@@ -2,7 +2,10 @@
 
 import time
 import os
-import openai
+try:
+    import openai  # type: ignore
+except Exception:  # pragma: no cover - optional dependency for tests
+    openai = None
 from typing import Dict, Any, Optional
 
 # Optionally: set your API key here or rely on OPENAI_API_KEY environment variable
@@ -37,6 +40,9 @@ def call_chatgpt(
     Returns:
       - The raw JSON response from OpenAI.
     """
+    if openai is None:
+        raise RuntimeError("openai package not available")
+
     # If an api_key was passed explicitly, set it:
 
     OPENAI_KEY = os.getenv("OPENAI_API_KEY")

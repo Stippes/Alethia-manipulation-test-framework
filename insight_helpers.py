@@ -7,7 +7,8 @@ def compute_manipulation_ratio(features: List[Dict[str, Any]]) -> float:
     manipulative = 0
     for f in features:
         flags = f.get('flags', {})
-        if any(flags.get(k) for k in ['urgency', 'guilt', 'flattery', 'fomo', 'dark_ui']) or flags.get('emotion_count', 0) > 0:
+        bool_flags = [k for k in flags if k != 'emotion_count']
+        if any(flags.get(k) for k in bool_flags) or flags.get('emotion_count', 0) > 0:
             manipulative += 1
     return manipulative / total
 
@@ -16,7 +17,7 @@ def compute_manipulation_timeline(features: List[Dict[str, Any]]) -> List[int]:
     timeline = []
     for f in features:
         flags = f.get('flags', {})
-        count = int(flags.get('urgency', False)) + int(flags.get('guilt', False)) + int(flags.get('flattery', False)) + int(flags.get('fomo', False)) + int(flags.get('dark_ui', False))
+        count = sum(int(bool(flags.get(k))) for k in flags if k != 'emotion_count')
         if flags.get('emotion_count', 0) > 0:
             count += 1
         timeline.append(count)
@@ -28,7 +29,7 @@ def compute_most_manipulative_message(features: List[Dict[str, Any]]) -> Dict[st
     best_count = -1
     for f in features:
         flags = f.get('flags', {})
-        active = [k for k in ['urgency', 'guilt', 'flattery', 'fomo', 'dark_ui'] if flags.get(k)]
+        active = [k for k in flags if k != 'emotion_count' and flags.get(k)]
         if flags.get('emotion_count', 0) > 0:
             active.append('emotion')
         count = len(active)

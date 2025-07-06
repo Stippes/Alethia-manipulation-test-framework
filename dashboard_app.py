@@ -11,12 +11,25 @@ from insight_helpers import (
     compute_dominance_metrics,
 )
 
-import dash
-from dash import dcc, html, callback_context
-from dash.dependencies import Input, Output, State
-import plotly.graph_objs as go
+try:
+    import dash
+    from dash import dcc, html
+    from dash.dependencies import Input, Output, State
+    import plotly.graph_objs as go
+    import dash_bootstrap_components as dbc
+except Exception:  # pragma: no cover - make optional for tests
+    class _Dummy:
+        def __getattr__(self, name):
+            return self
 
-import dash_bootstrap_components as dbc
+        def __call__(self, *args, **kwargs):
+            return self
+
+    dash = _Dummy()
+    dcc = html = Input = Output = State = _Dummy()
+    go = _Dummy()
+    dbc = _Dummy()
+
 
 # pick one of the Bootswatch themes below:
 # ['CERULEAN','COSMO','CYBORG','DARKLY','FLATLY','JOURNAL',
@@ -24,7 +37,38 @@ import dash_bootstrap_components as dbc
 #  'SUPERHERO','UNITED','VAPOR','YETI']
 
 from scripts import input_parser, static_feature_extractor
+from scripts.judge_conversation import judge_conversation_llm
 import scorer
+
+# Flags added beyond the original four categories
+NEW_FLAGS = [
+    ("guilt", "Guilt Trips"),
+    ("social_proof", "Social Proof"),
+    ("authority", "Authority"),
+    ("reciprocity", "Reciprocity"),
+    ("consistency", "Consistency"),
+    ("dependency", "Dependency"),
+    ("fear", "Fear/Threats"),
+    ("gaslighting", "Gaslighting"),
+    ("deception", "Deception"),
+]
+
+ALL_FLAG_NAMES = [
+    "urgency",
+    "guilt",
+    "flattery",
+    "fomo",
+    "social_proof",
+    "authority",
+    "reciprocity",
+    "consistency",
+    "dependency",
+    "fear",
+    "gaslighting",
+    "deception",
+    "dark_ui",
+    "emotion_count",
+]
 
 
 def parse_uploaded_file(contents: str, filename: str) -> Dict[str, Any]:
@@ -81,6 +125,8 @@ def analyze_conversation(conv: Dict[str, Any]) -> Dict[str, Any]:
         'parasocial_pressure': sum(1 for f in features if f['flags'].get('flattery')),
         'reinforcement_loops': sum(1 for f in features if f['flags'].get('urgency') or f['flags'].get('fomo')),
     }
+    for flag, _ in NEW_FLAGS:
+        summary[flag] = sum(1 for f in features if f['flags'].get(flag))
     manipulation_ratio = compute_manipulation_ratio(features)
     manipulation_timeline = compute_manipulation_timeline(features)
     most_manipulative = compute_most_manipulative_message(features)
@@ -197,15 +243,45 @@ app.layout = html.Div([
                                                 "label": "Reinforcement Loops",
                                                 "value": "reinforcement_loops",
                                             },
+                                            *[
+                                                {
+                                                    "label": label,
+                                                    "value": flag,
+                                                }
+                                                for flag, label in NEW_FLAGS
+                                            ],
                                         ],
                                         value=[
                                             "dark_patterns",
                                             "emotional_framing",
                                             "parasocial_pressure",
                                             "reinforcement_loops",
+                                            *[flag for flag, _ in NEW_FLAGS],
                                         ],
                                         inline=False,
                                         className="mb-3 text-light",
+                                    ),
+                                    dcc.Dropdown(
+                                        id="llm-provider",
+                                        options=[
+                                            {"label": "OpenAI", "value": "openai"},
+                                            {"label": "Claude", "value": "claude"},
+                                            {"label": "Mistral", "value": "mistral"},
+                                            {"label": "Gemini", "value": "gemini"},
+                                        ],
+                                        value="openai",
+                                        className="mb-2",
+                                        style={
+                                            "backgroundColor": "#2b2b2b",
+                                            "color": "#dddddd",
+                                            "border": "1px solid #444",
+                                        },
+                                    ),
+                                    dbc.Button(
+                                        "Analyze with LLM judge",
+                                        id="llm-judge-btn",
+                                        color="info",
+                                        className="mb-3",
                                     ),
                                     html.Div(id="file-info", className="text-muted mb-2"),
                                     html.H5("\u26A0\ufe0f Manipulation Risk", className="text-light"),
@@ -219,6 +295,10 @@ app.layout = html.Div([
                                             dbc.ListGroupItem(id="emotional-framing", color="dark"),
                                             dbc.ListGroupItem(id="parasocial-pressure", color="dark"),
                                             dbc.ListGroupItem(id="reinforcement-loops", color="dark"),
+                                            *[
+                                                dbc.ListGroupItem(id=flag.replace('_', '-'), color="dark")
+                                                for flag, _ in NEW_FLAGS
+                                            ],
                                         ],
                                         flush=True,
                                     ),
@@ -260,6 +340,7 @@ app.layout = html.Div([
                                     dcc.Graph(id="pattern-graph", className="mt-4"),
                                     dcc.Graph(id="manipulation-graph", className="mt-4"),
                                     html.Div(id="most-manipulative", className="mt-3 text-light"),
+                                    html.Div(id="llm-judge-results", className="mt-3"),
                                     dbc.Button(
                                         "Download JSON Report",
                                         id="download-json-btn",
@@ -330,10 +411,15 @@ app.layout = html.Div([
         Output("emotional-framing", "children"),
         Output("parasocial-pressure", "children"),
         Output("reinforcement-loops", "children"),
+        *[
+            Output(flag.replace('_', '-'), "children")
+            for flag, _ in NEW_FLAGS
+        ],
         Output("conversation-view", "children"),
         Output("pattern-graph", "figure"),
         Output("manipulation-graph", "figure"),
         Output("most-manipulative", "children"),
+        Output("llm-judge-results", "children"),
         Output("dominance-table", "children"),
         Output("explanations", "children"),
         Output("download-json", "data"),
@@ -342,17 +428,35 @@ app.layout = html.Div([
         Input("upload-data", "contents"),
         Input("view-mode", "value"),
         Input("download-json-btn", "n_clicks"),
+        Input("llm-judge-btn", "n_clicks"),
+        Input("llm-provider", "value"),
         Input("pattern-filter", "value"),
     ],
     [State("upload-data", "filename"), State("theme-toggle", "value")],
 )
 
-def update_output(contents, view_mode, download_clicks, selected_patterns, filename, light_on):
+def update_output(contents, view_mode, download_clicks, judge_clicks, provider, selected_patterns, filename, light_on):
     bg = "#ffffff" if light_on else "#1a1a1a"
     text_color = "black" if light_on else "white"
     if contents is None:
         empty_fig = go.Figure(layout=go.Layout(paper_bgcolor=bg, plot_bgcolor=bg))
-        return ["", "", "", "", "", "", [], empty_fig, empty_fig, "", "", "", None]
+        return [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            *["" for _ in NEW_FLAGS],
+            [],
+            empty_fig,
+            empty_fig,
+            "",
+            html.Div(),
+            "",
+            "",
+            None,
+        ]
 
     conv = parse_uploaded_file(contents, filename)
     results = analyze_conversation(conv)
@@ -373,18 +477,32 @@ def update_output(contents, view_mode, download_clicks, selected_patterns, filen
                 text = f"{text} \u26A0\ufe0f ({', '.join(flags)})"
         msgs.append(html.Div(f"{msg['sender'] or 'Unknown'}: {text}"))
 
-    # 1) extract just those summary keys the user has selected
-    raw_x = [k for k in summary.keys() if k in selected_patterns]
 
-    # 2) make pretty labels from your raw keys
+    raw_x = [k for k in summary.keys() if k in selected_patterns]
     bar_x = [k.replace('_', ' ').title() for k in raw_x]
+    bar_y = [summary[k] for k in raw_x]
+    bar_colors = [
+        "#17BECF",
+        "#FF7F0E",
+        "#2CA02C",
+        "#D62728",
+        "#9467BD",
+        "#8C564B",
+        "#E377C2",
+        "#7F7F7F",
+        "#BCBD22",
+        "#1F77B4",
+        "#9EDAE5",
+        "#FF9896",
+        "#AEC7E8",
+    ]
 
     # 3) build your y‐values off the raw keys
-    bar_y = [summary[k] for k in raw_x]
-    bar_colors = ["#FADFC9",
-    "#e8d2b1", 
-    "#d6c49a", 
-    "#c5b583",][: len(raw_x)]
+#     bar_colors = ["#FADFC9",
+#     "#e8d2b1", 
+#     "#d6c49a", 
+#     "#c5b583",][: len(raw_x)]
+
     figure = go.Figure(
         data=[go.Bar(x=bar_x, y=bar_y, marker_color=bar_colors[: len(bar_x)])],
         layout=go.Layout(
@@ -468,6 +586,20 @@ def update_output(contents, view_mode, download_clicks, selected_patterns, filen
 
     explanations = dbc.Accordion(
         [
+
+#             dbc.AccordionItem("UI designs that trick users.", title="Dark Patterns"),
+#             dbc.AccordionItem("Messages using strong emotion.", title="Emotional Framing"),
+#             dbc.AccordionItem("Overly familiar language.", title="Parasocial Pressure"),
+#             dbc.AccordionItem("Repeated prompts urging action.", title="Reinforcement Loops"),
+#             dbc.AccordionItem("Inducing shame or obligation.", title="Guilt Trips"),
+#             dbc.AccordionItem("Appeals to popularity.", title="Social Proof"),
+#             dbc.AccordionItem("Invoking authority figures.", title="Authority"),
+#             dbc.AccordionItem("Expecting favors in return.", title="Reciprocity"),
+#             dbc.AccordionItem("Leveraging past commitments.", title="Consistency"),
+#             dbc.AccordionItem("Creating a sense of dependence.", title="Dependency"),
+#             dbc.AccordionItem("Threats or dire consequences.", title="Fear/Threats"),
+#             dbc.AccordionItem("Denying reality or twisting facts.", title="Gaslighting"),
+#             dbc.AccordionItem("Misleading or false claims.", title="Deception"),
             dbc.AccordionItem(
                 children=[
                     html.P(
@@ -546,12 +678,41 @@ def update_output(contents, view_mode, download_clicks, selected_patterns, filen
     )
 
 
-    triggered_id = callback_context.triggered[0]["prop_id"].split(".")[0]
-    download_data = None
+    judge_results = None
+    judge_div = html.Div()
+    if judge_clicks:
+        try:
+            judge_results = judge_conversation_llm(conv, provider=provider or "openai")
+        except Exception as exc:  # pragma: no cover - network errors etc
+            judge_div = dbc.Alert(str(exc), color="warning", className="mt-2")
+        else:
+            if judge_results and isinstance(judge_results, dict):
+                header = [html.Th("Index"), html.Th("Text")] + [html.Th(f.replace('_', ' ').title()) for f in ALL_FLAG_NAMES]
+                rows = [html.Tr(header)]
+                for item in judge_results.get("flagged", []):
+                    row = [html.Td(item.get("index")), html.Td(item.get("text"))]
+                    flags = item.get("flags", {})
+                    for f in ALL_FLAG_NAMES:
+                        row.append(html.Td(str(flags.get(f, False))))
+                    rows.append(html.Tr(row))
+                judge_div = html.Table(rows, className="table table-sm table-dark")
+            else:
+                judge_div = html.Div("No manipulative bot messages detected.", className="text-muted")
 
-    if triggered_id == "download-json-btn":
+    download_data = None
+    if download_clicks:
+        payload = {"conversation": conv, "analysis": results}
+        if judge_results is not None:
+            payload["llm_judge"] = judge_results
+
+
+#     triggered_id = callback_context.triggered[0]["prop_id"].split(".")[0]
+#     download_data = None
+
+#     if triggered_id == "download-json-btn":
+
         download_data = dict(
-            content=json.dumps({"conversation": conv, "analysis": results}, indent=2),
+            content=json.dumps(payload, indent=2),
             filename="analysis.json",
         )
 
@@ -562,10 +723,15 @@ def update_output(contents, view_mode, download_clicks, selected_patterns, filen
         f"Emotional Framing: {summary['emotional_framing']}",
         f"Parasocial Pressure: {summary['parasocial_pressure']}",
         f"Reinforcement Loops: {summary['reinforcement_loops']}",
+        *[
+            f"{label}: {summary[flag]}"
+            for flag, label in NEW_FLAGS
+        ],
         msgs,
         figure,
         timeline_fig,
         most_msg_div,
+        judge_div,
         dominance_table,
         explanations,
         download_data,

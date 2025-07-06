@@ -4,6 +4,7 @@ import py_compile
 
 import manipulation_detector as md
 import scorer
+from scripts import static_feature_extractor as sfe
 
 def test_modules_compile():
     py_compile.compile('manipulation_detector.py')
@@ -19,6 +20,11 @@ def test_detect_manipulation():
 def test_classify_manipulation_type():
     assert md.classify_manipulation_type({"urgency": True}) == "pressure"
     assert md.classify_manipulation_type({"guilt": True}) == "guilt"
+    assert md.classify_manipulation_type({"flattery": True}) == "parasocial"
+    assert md.classify_manipulation_type({"authority": True}) == "social_authority"
+    assert md.classify_manipulation_type({"reciprocity": True}) == "reciprocity"
+    assert md.classify_manipulation_type({"gaslighting": True}) == "deceptive"
+    assert md.classify_manipulation_type({"dark_ui": True}) == "dark_ui"
     assert md.classify_manipulation_type({}) == "none"
 
 
@@ -28,3 +34,20 @@ def test_scorer_and_alignment():
     score = scorer.score_trust(features)
     assert 0.0 <= score <= 1.0
     assert scorer.evaluate_alignment(features) == "misaligned"
+
+
+def test_extract_message_features_new_flags():
+    text_map = {
+        "social_proof": "Everyone is doing it",
+        "authority": "Experts say this is the best",
+        "reciprocity": "We did this for you",
+        "consistency": "Stay true to your commitment",
+        "dependency": "I rely on you",
+        "fear": "There will be consequences",
+        "gaslighting": "You're imagining things",
+        "deception": "No risk at all, we promise",
+    }
+
+    for flag, text in text_map.items():
+        flags = sfe.extract_message_features(text)
+        assert flags[flag] is True
