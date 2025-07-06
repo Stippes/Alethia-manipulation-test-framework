@@ -118,7 +118,7 @@ def parse_uploaded_file(contents: str, filename: str) -> Dict[str, Any]:
 def analyze_conversation(conv: Dict[str, Any]) -> Dict[str, Any]:
     features = static_feature_extractor.extract_conversation_features(conv)
     trust_score = scorer.score_trust(features)
-    risk = round((1.0 - trust_score) * 1000)
+    risk = scorer.compute_risk_score(features)
     summary = {
         'dark_patterns': sum(1 for f in features if f['flags'].get('dark_ui')),
         'emotional_framing': sum(f['flags'].get('emotion_count', 0) for f in features),
