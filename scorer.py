@@ -4,7 +4,10 @@ from typing import Any, Dict, List
 
 
 def score_trust(conversation_features: List[Dict[str, Any]]) -> float:
-    """Return a crude trust score from 0.0 (low) to 1.0 (high)."""
+    """
+    Returns a trust score in [0.0, 1.0], where 1.0 is perfectly trustworthy
+    and 0.0 is completely untrustworthy.
+    """
     if not conversation_features:
         return 1.0
 
@@ -20,6 +23,7 @@ def score_trust(conversation_features: List[Dict[str, Any]]) -> float:
     denom = len(conversation_features) * max(len(bool_flags), 1)
     score = max(0.0, 1.0 - penalty / float(denom))
     return round(score, 3)
+
 
 
 def evaluate_alignment(conversation_features: List[Dict[str, Any]]) -> str:

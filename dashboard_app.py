@@ -30,6 +30,7 @@ except Exception:  # pragma: no cover - make optional for tests
     go = _Dummy()
     dbc = _Dummy()
 
+
 # pick one of the Bootswatch themes below:
 # ['CERULEAN','COSMO','CYBORG','DARKLY','FLATLY','JOURNAL',
 #  'LUMEN','PULSE','SLATE','SOLAR','SPACELAB',
@@ -160,7 +161,6 @@ default_figure = go.Figure(
         yaxis=dict(title="Count", color="white"),
     ),
 )
-
 
 app.layout = html.Div([
     html.Link(id="theme-link", rel="stylesheet", href=DARK_THEME),
@@ -434,6 +434,7 @@ app.layout = html.Div([
     ],
     [State("upload-data", "filename"), State("theme-toggle", "value")],
 )
+
 def update_output(contents, view_mode, download_clicks, judge_clicks, provider, selected_patterns, filename, light_on):
     bg = "#ffffff" if light_on else "#1a1a1a"
     text_color = "black" if light_on else "white"
@@ -476,8 +477,10 @@ def update_output(contents, view_mode, download_clicks, judge_clicks, provider, 
                 text = f"{text} \u26A0\ufe0f ({', '.join(flags)})"
         msgs.append(html.Div(f"{msg['sender'] or 'Unknown'}: {text}"))
 
-    bar_x = [k for k in summary.keys() if k in selected_patterns]
-    bar_y = [summary[k] for k in bar_x]
+
+    raw_x = [k for k in summary.keys() if k in selected_patterns]
+    bar_x = [k.replace('_', ' ').title() for k in raw_x]
+    bar_y = [summary[k] for k in raw_x]
     bar_colors = [
         "#17BECF",
         "#FF7F0E",
@@ -493,6 +496,13 @@ def update_output(contents, view_mode, download_clicks, judge_clicks, provider, 
         "#FF9896",
         "#AEC7E8",
     ]
+
+    # 3) build your y‐values off the raw keys
+#     bar_colors = ["#FADFC9",
+#     "#e8d2b1", 
+#     "#d6c49a", 
+#     "#c5b583",][: len(raw_x)]
+
     figure = go.Figure(
         data=[go.Bar(x=bar_x, y=bar_y, marker_color=bar_colors[: len(bar_x)])],
         layout=go.Layout(
@@ -510,7 +520,7 @@ def update_output(contents, view_mode, download_clicks, judge_clicks, provider, 
             go.Scatter(
                 y=results["manipulation_timeline"],
                 mode="lines+markers",
-                line=dict(color="#ffa15a"),
+                line=dict(color="#FADFC9"),
                 hovertemplate="Message %{x} – %{y} manipulation flags",
             )
         ],
@@ -576,23 +586,97 @@ def update_output(contents, view_mode, download_clicks, judge_clicks, provider, 
 
     explanations = dbc.Accordion(
         [
-            dbc.AccordionItem("UI designs that trick users.", title="Dark Patterns"),
-            dbc.AccordionItem("Messages using strong emotion.", title="Emotional Framing"),
-            dbc.AccordionItem("Overly familiar language.", title="Parasocial Pressure"),
-            dbc.AccordionItem("Repeated prompts urging action.", title="Reinforcement Loops"),
-            dbc.AccordionItem("Inducing shame or obligation.", title="Guilt Trips"),
-            dbc.AccordionItem("Appeals to popularity.", title="Social Proof"),
-            dbc.AccordionItem("Invoking authority figures.", title="Authority"),
-            dbc.AccordionItem("Expecting favors in return.", title="Reciprocity"),
-            dbc.AccordionItem("Leveraging past commitments.", title="Consistency"),
-            dbc.AccordionItem("Creating a sense of dependence.", title="Dependency"),
-            dbc.AccordionItem("Threats or dire consequences.", title="Fear/Threats"),
-            dbc.AccordionItem("Denying reality or twisting facts.", title="Gaslighting"),
-            dbc.AccordionItem("Misleading or false claims.", title="Deception"),
+
+#             dbc.AccordionItem("UI designs that trick users.", title="Dark Patterns"),
+#             dbc.AccordionItem("Messages using strong emotion.", title="Emotional Framing"),
+#             dbc.AccordionItem("Overly familiar language.", title="Parasocial Pressure"),
+#             dbc.AccordionItem("Repeated prompts urging action.", title="Reinforcement Loops"),
+#             dbc.AccordionItem("Inducing shame or obligation.", title="Guilt Trips"),
+#             dbc.AccordionItem("Appeals to popularity.", title="Social Proof"),
+#             dbc.AccordionItem("Invoking authority figures.", title="Authority"),
+#             dbc.AccordionItem("Expecting favors in return.", title="Reciprocity"),
+#             dbc.AccordionItem("Leveraging past commitments.", title="Consistency"),
+#             dbc.AccordionItem("Creating a sense of dependence.", title="Dependency"),
+#             dbc.AccordionItem("Threats or dire consequences.", title="Fear/Threats"),
+#             dbc.AccordionItem("Denying reality or twisting facts.", title="Gaslighting"),
+#             dbc.AccordionItem("Misleading or false claims.", title="Deception"),
+            dbc.AccordionItem(
+                children=[
+                    html.P(
+                        "Dark Patterns are deceptive UI tricks designed to steer users into choices "
+                        "they might not otherwise make. Examples include hidden unsubscribe links, "
+                        "pre-checked consent boxes, or fake countdown timers that reset—"
+                        "all of which prey on cognitive biases (e.g. FOMO, inertia) to benefit the platform."
+                    ),
+                    html.Ul(
+                        [
+                            html.Li("Obstruction: Making critical options (like cancel) hard to find."),
+                            html.Li("Confirm-shaming: Guilt-tripping opt-out wording."),
+                            html.Li("Sneaking: Pre-checked items or hidden fees."),
+                        ]
+                    ),
+                ],
+                title="Dark Patterns",
+            ),
+            dbc.AccordionItem(
+                children=[
+                    html.P(
+                        "Emotional Framing leverages strong feelings—anger, fear, guilt, or excitement—to "
+                        "bypass rational decision-making. By injecting charged language or imagery, "
+                        "platforms can push users toward actions (clicks, purchases, shares) "
+                        "before they’ve had time to reflect."
+                    ),
+                    html.Ul(
+                        [
+                            html.Li("Urgent language: “Only 2 seats left!”"),
+                            html.Li("Play on fear: “Don’t miss out or regret later.”"),
+                            html.Li("Guilt triggers: “Say no and lose out forever.”"),
+                        ]
+                    ),
+                ],
+                title="Emotional Framing",
+            ),
+            dbc.AccordionItem(
+                children=[
+                    html.P(
+                        "Parasocial Pressure refers to over-familiar language or apparent empathy from "
+                        "a system that isn’t truly your ally. Chatbots or support prompts that "
+                        "flatter (“You’re so insightful!”) or feign disappointment can create "
+                        "a one-sided emotional bond—undermining your autonomy."
+                    ),
+                    html.Ul(
+                        [
+                            html.Li("Excessive flattery: “We really value your opinion.”"),
+                            html.Li("False intimacy: “I feel like I know you so well.”"),
+                            html.Li("Guilt-inducing follow-ups: “I was worried when you didn’t reply.”"),
+                        ]
+                    ),
+                ],
+                title="Parasocial Pressure",
+            ),
+            dbc.AccordionItem(
+                children=[
+                    html.P(
+                        "Reinforcement Loops exploit habit-forming psychology by delivering small, "
+                        "variable rewards (likes, points, badges) on unpredictable schedules. "
+                        "Over time, users build cravings—just like slot machines—that keep them "
+                        "coming back."
+                    ),
+                    html.Ul(
+                        [
+                            html.Li("Variable rewards: sometimes you win, sometimes you don’t."),
+                            html.Li("Autoplay & infinite scroll: no natural stopping point."),
+                            html.Li("Gamified quests or streaks: extra incentives to return daily."),
+                        ]
+                    ),
+                ],
+                title="Reinforcement Loops",
+            ),
         ],
         always_open=True,
         flush=True,
     )
+
 
     judge_results = None
     judge_div = html.Div()
@@ -620,6 +704,13 @@ def update_output(contents, view_mode, download_clicks, judge_clicks, provider, 
         payload = {"conversation": conv, "analysis": results}
         if judge_results is not None:
             payload["llm_judge"] = judge_results
+
+
+#     triggered_id = callback_context.triggered[0]["prop_id"].split(".")[0]
+#     download_data = None
+
+#     if triggered_id == "download-json-btn":
+
         download_data = dict(
             content=json.dumps(payload, indent=2),
             filename="analysis.json",

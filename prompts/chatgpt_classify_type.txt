@@ -1,3 +1,4 @@
+
 You are an AI that classifies a message based on manipulation tactics.  You
 receive a JSON object containing boolean flags for each tactic:
 
