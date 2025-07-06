@@ -36,6 +36,20 @@ def test_scorer_and_alignment():
     assert scorer.evaluate_alignment(features) == "misaligned"
 
 
+def test_compute_risk_score_behavior():
+    base = [{"flags": {"urgency": True, "emotion_count": 0}}]
+    risk1 = scorer.compute_risk_score(base)
+    risk2 = scorer.compute_risk_score(base * 3)
+    assert risk1 >= 50
+    assert risk2 > risk1
+    assert 0 <= risk1 <= 100 and 0 <= risk2 <= 100
+
+
+def test_compute_risk_score_no_flags():
+    assert scorer.compute_risk_score([]) == 0
+    assert scorer.compute_risk_score([{"flags": {"urgency": False}}]) == 0
+
+
 def test_extract_message_features_new_flags():
     text_map = {
         "social_proof": "Everyone is doing it",

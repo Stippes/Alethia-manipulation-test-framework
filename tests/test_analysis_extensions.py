@@ -22,6 +22,19 @@ def test_analyze_conversation_extended_fields():
     assert isinstance(result['manipulation_timeline'], list)
     assert result['manipulation_timeline'][1] > 0
     assert result['dominance_metrics']['user_msg_count'] == 2
+    assert 0 <= result['risk'] <= 100
+
+
+def test_analyze_conversation_risk_none():
+    conv = {
+        'conversation_id': 'r0',
+        'messages': [
+            {'sender': 'user', 'timestamp': None, 'text': 'hello'},
+            {'sender': 'bot', 'timestamp': None, 'text': 'hi there'}
+        ]
+    }
+    result = da.analyze_conversation(conv)
+    assert result['risk'] == 0
 
 
 def test_analyze_conversation_new_flags():
