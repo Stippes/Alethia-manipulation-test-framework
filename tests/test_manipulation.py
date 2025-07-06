@@ -19,6 +19,11 @@ def test_detect_manipulation():
 def test_classify_manipulation_type():
     assert md.classify_manipulation_type({"urgency": True}) == "pressure"
     assert md.classify_manipulation_type({"guilt": True}) == "guilt"
+    assert md.classify_manipulation_type({"flattery": True}) == "parasocial"
+    assert md.classify_manipulation_type({"authority": True}) == "social_authority"
+    assert md.classify_manipulation_type({"reciprocity": True}) == "reciprocity"
+    assert md.classify_manipulation_type({"gaslighting": True}) == "deceptive"
+    assert md.classify_manipulation_type({"dark_ui": True}) == "dark_ui"
     assert md.classify_manipulation_type({}) == "none"
 
 
