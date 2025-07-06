@@ -36,6 +36,7 @@ except Exception:  # pragma: no cover - make optional for tests
 #  'SUPERHERO','UNITED','VAPOR','YETI']
 
 from scripts import input_parser, static_feature_extractor
+from scripts.judge_conversation import judge_conversation_llm
 import scorer
 
 
@@ -220,6 +221,28 @@ app.layout = html.Div([
                                         inline=False,
                                         className="mb-3 text-light",
                                     ),
+                                    dcc.Dropdown(
+                                        id="llm-provider",
+                                        options=[
+                                            {"label": "OpenAI", "value": "openai"},
+                                            {"label": "Claude", "value": "claude"},
+                                            {"label": "Mistral", "value": "mistral"},
+                                            {"label": "Gemini", "value": "gemini"},
+                                        ],
+                                        value="openai",
+                                        className="mb-2",
+                                        style={
+                                            "backgroundColor": "#2b2b2b",
+                                            "color": "#dddddd",
+                                            "border": "1px solid #444",
+                                        },
+                                    ),
+                                    dbc.Button(
+                                        "Analyze with LLM judge",
+                                        id="llm-judge-btn",
+                                        color="info",
+                                        className="mb-3",
+                                    ),
                                     html.Div(id="file-info", className="text-muted mb-2"),
                                     html.H5("\u26A0\ufe0f Manipulation Risk", className="text-light"),
                                     html.Div(
@@ -273,6 +296,7 @@ app.layout = html.Div([
                                     dcc.Graph(id="pattern-graph", className="mt-4"),
                                     dcc.Graph(id="manipulation-graph", className="mt-4"),
                                     html.Div(id="most-manipulative", className="mt-3 text-light"),
+                                    html.Div(id="llm-judge-results", className="mt-3"),
                                     dbc.Button(
                                         "Download JSON Report",
                                         id="download-json-btn",
@@ -347,6 +371,7 @@ app.layout = html.Div([
         Output("pattern-graph", "figure"),
         Output("manipulation-graph", "figure"),
         Output("most-manipulative", "children"),
+        Output("llm-judge-results", "children"),
         Output("dominance-table", "children"),
         Output("explanations", "children"),
         Output("download-json", "data"),
@@ -355,16 +380,18 @@ app.layout = html.Div([
         Input("upload-data", "contents"),
         Input("view-mode", "value"),
         Input("download-json-btn", "n_clicks"),
+        Input("llm-judge-btn", "n_clicks"),
+        Input("llm-provider", "value"),
         Input("pattern-filter", "value"),
     ],
     [State("upload-data", "filename"), State("theme-toggle", "value")],
 )
-def update_output(contents, view_mode, download_clicks, selected_patterns, filename, light_on):
+def update_output(contents, view_mode, download_clicks, judge_clicks, provider, selected_patterns, filename, light_on):
     bg = "#ffffff" if light_on else "#1a1a1a"
     text_color = "black" if light_on else "white"
     if contents is None:
         empty_fig = go.Figure(layout=go.Layout(paper_bgcolor=bg, plot_bgcolor=bg))
-        return ["", "", "", "", "", "", [], empty_fig, empty_fig, "", "", "", None]
+        return ["", "", "", "", "", "", [], empty_fig, empty_fig, "", html.Div(), "", "", None]
 
     conv = parse_uploaded_file(contents, filename)
     results = analyze_conversation(conv)
@@ -480,10 +507,30 @@ def update_output(contents, view_mode, download_clicks, selected_patterns, filen
         flush=True,
     )
 
+    judge_results = None
+    judge_div = html.Div()
+    if judge_clicks:
+        try:
+            judge_results = judge_conversation_llm(conv, provider=provider or "openai")
+        except Exception as exc:  # pragma: no cover - network errors etc
+            judge_div = dbc.Alert(str(exc), color="warning", className="mt-2")
+        else:
+            if judge_results and isinstance(judge_results, dict):
+                rows = [html.Tr([html.Th("Index"), html.Th("Text"), html.Th("Flags")])]
+                for item in judge_results.get("flagged", []):
+                    flags = ", ".join(k for k, v in item.get("flags", {}).items() if v)
+                    rows.append(html.Tr([html.Td(item.get("index")), html.Td(item.get("text")), html.Td(flags)]))
+                judge_div = html.Table(rows, className="table table-sm table-dark")
+            else:
+                judge_div = html.Div("No manipulative bot messages detected.", className="text-muted")
+
     download_data = None
     if download_clicks:
+        payload = {"conversation": conv, "analysis": results}
+        if judge_results is not None:
+            payload["llm_judge"] = judge_results
         download_data = dict(
-            content=json.dumps({"conversation": conv, "analysis": results}, indent=2),
+            content=json.dumps(payload, indent=2),
             filename="analysis.json",
         )
 
@@ -498,6 +545,7 @@ def update_output(contents, view_mode, download_clicks, selected_patterns, filen
         figure,
         timeline_fig,
         most_msg_div,
+        judge_div,
         dominance_table,
         explanations,
         download_data,
