@@ -28,3 +28,21 @@ def setup_logging(log_file: str = "logs/framework.log") -> None:
     stream = logging.StreamHandler()
     stream.setFormatter(formatter)
     logger.addHandler(stream)
+
+
+def get_llm_logger(log_file: str = "logs/llm_output.log") -> logging.Logger:
+    """Return logger writing raw LLM responses to a dedicated file."""
+    path = Path(log_file)
+    path.parent.mkdir(parents=True, exist_ok=True)
+
+    logger = logging.getLogger("llm_output")
+    for h in logger.handlers:
+        if isinstance(h, RotatingFileHandler) and Path(h.baseFilename) == path:
+            return logger
+
+    handler = RotatingFileHandler(log_file, maxBytes=1_000_000, backupCount=3)
+    handler.setFormatter(logging.Formatter("%(asctime)s %(message)s"))
+    logger.addHandler(handler)
+    logger.setLevel(logging.INFO)
+    logger.propagate = False
+    return logger
