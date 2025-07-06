@@ -25,8 +25,10 @@ Make sure to add `.env` to `.gitignore` so you never commit your secrets.
 Application modules use Python's ``logging`` package. Calling ``setup_logging``
 creates a ``logs/`` directory and writes rotating log files under
 ``logs/framework.log``. Console output is also enabled. Entry-point scripts
+
 invoke this setup automatically. Raw outputs from LLM calls are written to
 ``logs/llm_output.log`` via ``get_llm_logger``.
+
 
 ## Test Dashboard
 

@@ -29,7 +29,6 @@ def setup_logging(log_file: str = "logs/framework.log") -> None:
     stream.setFormatter(formatter)
     logger.addHandler(stream)
 
-
 def get_llm_logger(log_file: str = "logs/llm_output.log") -> logging.Logger:
     """Return logger writing raw LLM responses to a dedicated file."""
     path = Path(log_file)
@@ -46,3 +45,4 @@ def get_llm_logger(log_file: str = "logs/llm_output.log") -> logging.Logger:
     logger.setLevel(logging.INFO)
     logger.propagate = False
     return logger
+
