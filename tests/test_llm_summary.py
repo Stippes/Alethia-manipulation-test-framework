@@ -1,6 +1,7 @@
 import json, base64
 import dashboard_app as da
 go = da.go
+from scripts.judge_utils import merge_judge_results
 
 def test_summarize_judge_results():
     jr = {
@@ -43,3 +44,20 @@ def test_flag_comparison_figure():
     assert llm["urgency"] == 1 and llm["guilt"] == 1
     fig = da.build_flag_comparison_figure(features, judge, "#000", "white")
     assert fig is not None
+
+
+def test_flag_helpers_with_merged_results():
+    features = [
+        {"index": 0, "sender": "bot", "timestamp": None, "text": "buy", "flags": {"urgency": True}},
+        {"index": 1, "sender": "bot", "timestamp": None, "text": "hi", "flags": {}},
+    ]
+    raw_results = {
+        "openai": {"flagged": [{"index": 0, "text": "buy", "flags": {"urgency": True}}]},
+        "claude": {"flagged": [{"index": 1, "text": "hi", "flags": {"flattery": True}}]},
+    }
+    merged = merge_judge_results(raw_results)
+    heur, llm = da.compute_flag_counts(features, merged)
+    assert heur["urgency"] == 1
+    assert llm["urgency"] == 1 and llm["flattery"] == 1
+    timeline = da.compute_llm_flag_timeline(merged, len(features))
+    assert timeline == [1, 1]

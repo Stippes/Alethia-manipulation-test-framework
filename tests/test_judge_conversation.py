@@ -6,6 +6,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 import pytest
 
 from scripts.judge_conversation import judge_conversation_llm
+from scripts.judge_utils import merge_judge_results
 
 
 def test_message_count_limit():
@@ -156,3 +157,48 @@ def test_judge_conversation_auto_partial(monkeypatch):
 
     result = judge_conversation_llm(conv, provider="auto")
     assert list(result.keys()) == ["openai"]
+
+def test_merge_judge_results_passthrough():
+    data = {"flagged": [{"index": 0}]}
+    assert merge_judge_results(data) == data
+
+
+def test_merge_judge_results_union():
+    results = {
+        "openai": {"flagged": [{"index": 0, "text": "a", "flags": {"urgency": True}}]},
+        "claude": {"flagged": [{"index": 1, "text": "b", "flags": {"fomo": True}}]},
+        "other": {}
+    }
+    merged = merge_judge_results(results)
+    assert merged == {
+        "flagged": [
+            {"index": 0, "text": "a", "flags": {"urgency": True}},
+            {"index": 1, "text": "b", "flags": {"fomo": True}},
+        ]
+    }
+
+def test_merge_judge_results_from_auto(monkeypatch):
+    conv = {"conversation_id": "m", "messages": [{"sender": "bot", "timestamp": None, "text": "x"}]}
+
+    monkeypatch.setenv("OPENAI_API_KEY", "ok")
+    monkeypatch.setenv("GEMINI_API_KEY", "g")
+    monkeypatch.setenv("CLAUDE_API_KEY", "c")
+    monkeypatch.setenv("MISTRAL_API_KEY", "m")
+
+    def fake(provider):
+        def _f(prompt, api_key=None, **kw):
+            resp = {"flagged": []}
+            if provider != "openai":
+                resp = {"flagged": [{"index": 0, "text": provider, "flags": {"urgency": True}}]}
+            return {"choices": [{"message": {"content": json.dumps(resp)}}]}
+        return _f
+
+    monkeypatch.setattr('scripts.judge_conversation.call_chatgpt', fake("openai"))
+    monkeypatch.setattr('scripts.judge_conversation.call_gemini', fake("gemini"))
+    monkeypatch.setattr('scripts.judge_conversation.call_claude', fake("claude"))
+    monkeypatch.setattr('scripts.judge_conversation.call_mistral', fake("mistral"))
+
+    result = judge_conversation_llm(conv, provider="auto")
+    merged = merge_judge_results(result)
+    texts = [f["text"] for f in merged["flagged"]]
+    assert set(texts) == {"gemini", "claude", "mistral"}

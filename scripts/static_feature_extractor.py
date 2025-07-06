@@ -2,6 +2,9 @@
 
 import re
 from typing import List, Dict, Any
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 # -------------------------------------------------------------------------------------------------
@@ -151,6 +154,7 @@ def extract_message_features(text: str) -> Dict[str, Any]:
     fear/threats, gaslighting and deception cues.  The return dictionary
     contains a boolean flag for each tactic and an ``emotion_count``.
     """
+    logger.debug("Extracting features from text: %s", text[:30])
     flags = {
         "urgency": False,
         "guilt": False,
@@ -199,6 +203,9 @@ def extract_conversation_features(
 
     This provides a feature set per message for downstream scoring.
     """
+    logger.info(
+        "Extracting features for conversation %s", conversation.get("conversation_id")
+    )
     results = []
     messages = conversation.get("messages", [])
 
@@ -214,4 +221,5 @@ def extract_conversation_features(
             "flags": flags
         })
 
+    logger.info("Extracted features for %d messages", len(results))
     return results

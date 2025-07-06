@@ -3,6 +3,8 @@ import io
 import json
 from datetime import datetime
 from typing import Dict, Any, List
+import logging
+from logging_utils import setup_logging
 
 from insight_helpers import (
     compute_manipulation_ratio,
@@ -31,6 +33,9 @@ except Exception:  # pragma: no cover - make optional for tests
     go = _Dummy()
     dbc = _Dummy()
 
+setup_logging()
+logger = logging.getLogger(__name__)
+
 
 # pick one of the Bootswatch themes below:
 # ['CERULEAN','COSMO','CYBORG','DARKLY','FLATLY','JOURNAL',
@@ -39,6 +44,7 @@ except Exception:  # pragma: no cover - make optional for tests
 
 from scripts import input_parser, static_feature_extractor
 from scripts.judge_conversation import judge_conversation_llm
+from scripts.judge_utils import merge_judge_results
 import scorer
 
 # Flags added beyond the original four categories
@@ -75,7 +81,11 @@ ALL_FLAG_NAMES = [
 def compute_flag_counts(features: List[Dict[str, Any]], judge_results: Dict[str, Any]) -> (
     Dict[str, int], Dict[str, int]
 ):
-    """Return heuristic and LLM counts for each flag."""
+    """Return heuristic and LLM counts for each flag.
+
+    ``judge_results`` is expected to contain a top-level ``"flagged"`` list,
+    typically produced by :func:`merge_judge_results`.
+    """
     heur = {f: 0 for f in ALL_FLAG_NAMES}
     for feat in features:
         flags = feat.get("flags", {})
@@ -86,12 +96,12 @@ def compute_flag_counts(features: List[Dict[str, Any]], judge_results: Dict[str,
                 heur[f] += 1
 
     llm = {f: 0 for f in ALL_FLAG_NAMES}
-    if isinstance(judge_results, dict):
-        for item in judge_results.get("flagged", []):
-            flags = item.get("flags", {})
-            for f in ALL_FLAG_NAMES:
-                if flags.get(f):
-                    llm[f] += 1
+    flagged = judge_results.get("flagged") if isinstance(judge_results, dict) else []
+    for item in flagged or []:
+        flags = item.get("flags", {})
+        for f in ALL_FLAG_NAMES:
+            if flags.get(f):
+                llm[f] += 1
     return heur, llm
 
 
@@ -132,6 +142,7 @@ def build_flag_comparison_figure(
 
 
 def parse_uploaded_file(contents: str, filename: str) -> Dict[str, Any]:
+    logger.debug("Parsing uploaded file %s", filename)
     content_type, content_string = contents.split(',')
     decoded = base64.b64decode(content_string)
     name = filename.lower()
@@ -176,6 +187,7 @@ def parse_uploaded_file(contents: str, filename: str) -> Dict[str, Any]:
 
 
 def analyze_conversation(conv: Dict[str, Any]) -> Dict[str, Any]:
+    logger.info("Analyzing conversation %s", conv.get('conversation_id'))
     features = static_feature_extractor.extract_conversation_features(conv)
     trust_score = scorer.score_trust(features)
     risk = scorer.compute_risk_score(features)
@@ -192,6 +204,7 @@ def analyze_conversation(conv: Dict[str, Any]) -> Dict[str, Any]:
     most_manipulative = compute_most_manipulative_message(features)
     dominance_metrics = compute_dominance_metrics(features)
 
+    logger.info("Analysis produced risk %s", risk)
     return {
         'features': features,
         'risk': risk,
@@ -534,6 +547,7 @@ def update_output(contents, view_mode, download_clicks, judge_clicks, provider, 
     text_color = "black" if light_on else "white"
     log_entries = list(debug_log or [])
     def log(msg):
+        logger.info(msg)
         log_entries.append(f"[{datetime.utcnow().isoformat()}] {msg}")
     if contents is None:
         empty_fig = go.Figure(layout=go.Layout(paper_bgcolor=bg, plot_bgcolor=bg))
@@ -561,6 +575,7 @@ def update_output(contents, view_mode, download_clicks, judge_clicks, provider, 
     conv = parse_uploaded_file(contents, filename)
     results = analyze_conversation(conv)
     log("analysis complete")
+    logger.debug("Finished analysis of uploaded file")
 
     ts = datetime.utcnow().isoformat()
     file_info = f"{filename} ({ts})"
@@ -943,10 +958,13 @@ def update_output(contents, view_mode, download_clicks, judge_clicks, provider, 
     if judge_clicks:
         try:
             log(f"requesting {provider or 'auto'} ...")
+            logger.debug("Sending judge request")
             judge_results = judge_conversation_llm(conv, provider=provider or "auto")
             log("received response")
+            logger.debug("Judge response parsed")
         except Exception as exc:  # pragma: no cover - network errors etc
             log(f"error: {exc}")
+            logger.warning("Judge request failed: %s", exc)
             judge_div = dbc.Alert(str(exc), color="warning", className="mt-2")
         else:
             if judge_results and isinstance(judge_results, dict):
@@ -960,11 +978,13 @@ def update_output(contents, view_mode, download_clicks, judge_clicks, provider, 
                     rows.append(html.Tr(row))
                 judge_div = html.Table(rows, className="table table-sm table-dark")
                 log("processed results")
+                logger.debug("Merged judge results for plotting")
             else:
                 judge_div = html.Div("No manipulative bot messages detected.", className="text-muted")
 
-            summary_text = summarize_judge_results(judge_results)
-            judge_timeline = compute_llm_flag_timeline(judge_results, len(results["features"]))
+            merged_for_plots = merge_judge_results(judge_results)
+            summary_text = summarize_judge_results(merged_for_plots)
+            judge_timeline = compute_llm_flag_timeline(merged_for_plots, len(results["features"]))
             if any(judge_timeline):
                 timeline_fig.add_trace(
                     go.Scatter(
@@ -976,8 +996,9 @@ def update_output(contents, view_mode, download_clicks, judge_clicks, provider, 
                     )
                 )
     if judge_results is not None:
+        merged_for_plots = merge_judge_results(judge_results)
         comparison_fig = build_flag_comparison_figure(
-            results["features"], judge_results, bg, text_color
+            results["features"], merged_for_plots, bg, text_color
         )
     else:
         comparison_fig = go.Figure(layout=go.Layout(paper_bgcolor=bg, plot_bgcolor=bg))
@@ -1035,4 +1056,5 @@ def display_debug(logs):
 
 
 if __name__ == "__main__":
+    setup_logging()
     app.run(debug=False)
