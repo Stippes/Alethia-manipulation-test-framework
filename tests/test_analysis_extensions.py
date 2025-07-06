@@ -67,3 +67,24 @@ def test_analyze_conversation_new_flags():
     assert feat[6]['flags']['fear']
     assert feat[7]['flags']['gaslighting']
     assert feat[8]['flags']['deception']
+
+
+def test_analyze_conversation_risk_scaling():
+    conv_low = {
+        'conversation_id': 'r1',
+        'messages': [
+            {'sender': 'bot', 'timestamp': None, 'text': 'Act now!'},
+        ]
+    }
+    conv_high = {
+        'conversation_id': 'r2',
+        'messages': [
+            {'sender': 'bot', 'timestamp': None, 'text': 'Act now!'} for _ in range(5)
+        ]
+    }
+    risk1 = da.analyze_conversation(conv_low)['risk']
+    risk2 = da.analyze_conversation(conv_high)['risk']
+    assert 0 <= risk1 <= 100
+    assert 0 <= risk2 <= 100
+    assert risk1 >= 50
+    assert risk2 > risk1
