@@ -41,7 +41,7 @@ def test_judge_conversation_parse_fail(monkeypatch):
     assert judge_conversation_llm(conv, provider="openai") == []
 
 
-def test_call_chatgpt_old_api(monkeypatch):
+def test_judge_conversation_llm_old_api(monkeypatch):
     monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
 
     class Error:
@@ -57,7 +57,8 @@ def test_call_chatgpt_old_api(monkeypatch):
     class ChatCompletion:
         @staticmethod
         def create(**kwargs):
-            return {"ok": True, "iface": "v0"}
+            json_resp = '{"flagged": [{"index": 0, "text": "Act now!", "flags": {"urgency": true}}]}'
+            return {"choices": [{"message": {"content": json_resp}}]}
 
     class FakeOpenAI:
         __version__ = "0.27.0"
@@ -69,12 +70,14 @@ def test_call_chatgpt_old_api(monkeypatch):
     monkeypatch.setitem(sys.modules, "openai", FakeOpenAI)
     import importlib
     mod = importlib.reload(sys.modules["api.chatgpt_api"])
+    monkeypatch.setattr("scripts.judge_conversation.call_chatgpt", mod.call_chatgpt)
 
-    resp = mod.call_chatgpt("hi")
-    assert resp["iface"] == "v0"
+    conv = {"conversation_id": "c3", "messages": [{"sender": "bot", "timestamp": None, "text": "Act now!"}]}
+    result = judge_conversation_llm(conv, provider="openai")
+    assert result["flagged"][0]["flags"]["urgency"]
 
 
-def test_call_chatgpt_new_api(monkeypatch):
+def test_judge_conversation_llm_new_api(monkeypatch):
     monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
 
     class FakeClient:
@@ -85,7 +88,8 @@ def test_call_chatgpt_new_api(monkeypatch):
             class completions:
                 @staticmethod
                 def create(**kwargs):
-                    return {"ok": True, "iface": "v1"}
+                    json_resp = '{"flagged": [{"index": 0, "text": "Act now!", "flags": {"urgency": true}}]}'
+                    return {"choices": [{"message": {"content": json_resp}}]}
 
     class FakeOpenAI:
         __version__ = "1.2.0"
@@ -97,6 +101,8 @@ def test_call_chatgpt_new_api(monkeypatch):
     monkeypatch.setitem(sys.modules, "openai", FakeOpenAI)
     import importlib
     mod = importlib.reload(sys.modules["api.chatgpt_api"])
+    monkeypatch.setattr("scripts.judge_conversation.call_chatgpt", mod.call_chatgpt)
 
-    resp = mod.call_chatgpt("hi")
-    assert resp["iface"] == "v1"
+    conv = {"conversation_id": "c4", "messages": [{"sender": "bot", "timestamp": None, "text": "Act now!"}]}
+    result = judge_conversation_llm(conv, provider="openai")
+    assert result["flagged"][0]["flags"]["urgency"]
