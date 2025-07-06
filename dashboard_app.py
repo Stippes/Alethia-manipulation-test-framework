@@ -9,6 +9,7 @@ from insight_helpers import (
     compute_manipulation_timeline,
     compute_most_manipulative_message,
     compute_dominance_metrics,
+    compute_llm_flag_timeline,
 )
 
 try:
@@ -560,6 +561,7 @@ def update_output(contents, view_mode, download_clicks, judge_clicks, provider, 
                 mode="lines+markers",
                 line=dict(color="#FADFC9"),
                 hovertemplate="Message %{x} – %{y} manipulation flags",
+                name="Heuristic",
             )
         ],
         layout=go.Layout(
@@ -898,6 +900,17 @@ def update_output(contents, view_mode, download_clicks, judge_clicks, provider, 
                 judge_div = html.Div("No manipulative bot messages detected.", className="text-muted")
 
             summary_text = summarize_judge_results(judge_results)
+            judge_timeline = compute_llm_flag_timeline(judge_results, len(results["features"]))
+            if any(judge_timeline):
+                timeline_fig.add_trace(
+                    go.Scatter(
+                        y=judge_timeline,
+                        mode="markers",
+                        marker=dict(color="#EF553B"),
+                        name="LLM Judge",
+                        hovertemplate="Message %{x} – %{y} flags (LLM)",
+                    )
+                )
 
     download_data = None
     if download_clicks:
