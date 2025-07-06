@@ -23,11 +23,12 @@ def test_judge_conversation_parsing(monkeypatch):
     }
 
     def fake_call(prompt, api_key=None, **kw):
-        return {"choices": [{"message": {"content": '[{"index": 1}]'}}]}
+        json_resp = '{"flagged": [{"index": 1, "text": "buy now", "flags": {"urgency": true}}]}'
+        return {"choices": [{"message": {"content": json_resp}}]}
 
     monkeypatch.setattr('scripts.judge_conversation.call_chatgpt', fake_call)
     result = judge_conversation_llm(conv, provider="openai")
-    assert result == [{"index": 1}]
+    assert result == {"flagged": [{"index": 1, "text": "buy now", "flags": {"urgency": True}}]}
 
 
 def test_judge_conversation_parse_fail(monkeypatch):
