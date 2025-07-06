@@ -2,7 +2,7 @@
 
 import json
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict
 
 from api.api_calls import (
     call_chatgpt,
@@ -20,7 +20,7 @@ _PROVIDER_MAP = {
 }
 
 
-def judge_conversation_llm(conversation: Dict[str, Any], provider: str = "openai") -> List[Dict[str, Any]]:
+def judge_conversation_llm(conversation: Dict[str, Any], provider: str = "openai") -> Dict[str, Any]:
     """Ask an LLM to flag manipulative bot messages in a conversation.
 
     Parameters
@@ -32,8 +32,8 @@ def judge_conversation_llm(conversation: Dict[str, Any], provider: str = "openai
 
     Returns
     -------
-    list of dict
-        Each dict describes a manipulative message. ``[]`` is returned on
+    dict
+        Parsed model output describing manipulative messages. ``[]`` is returned on
         parsing errors.
     """
     messages = conversation.get("messages", [])
