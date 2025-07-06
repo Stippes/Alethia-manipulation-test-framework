@@ -5,6 +5,9 @@ import re
 from pathlib import Path
 from datetime import datetime
 from typing import List, Dict, Optional, Any
+import logging
+
+logger = logging.getLogger(__name__)
 
 try:
     import dateutil.parser as _date_parser
@@ -26,6 +29,7 @@ def parse_json_chat(json_path: str) -> Dict[str, Any]:
     """
     path = Path(json_path)
     conversation_id = path.stem
+    logger.info("Parsing JSON conversation from %s", json_path)
 
     with path.open('r', encoding='utf-8') as f:
         data = json.load(f)
@@ -41,6 +45,8 @@ def parse_json_chat(json_path: str) -> Dict[str, Any]:
             f"Unexpected JSON structure for chat at {json_path}. "
             "Expected a dict with 'messages' or a list of messages."
         )
+
+    logger.debug("Loaded %d messages", len(messages))
 
     return {
         'conversation_id': conversation_id,
@@ -70,6 +76,7 @@ def parse_txt_chat(txt_path: str) -> Dict[str, Any]:
     path = Path(txt_path)
     conversation_id = path.stem
     messages: List[Dict[str, Optional[str]]] = []
+    logger.info("Parsing text conversation from %s", txt_path)
 
     # Regex patterns for common chat log styles
     # Pattern 1: [HH:MM:SS] Sender: text
@@ -122,6 +129,8 @@ def parse_txt_chat(txt_path: str) -> Dict[str, Any]:
                 'text': text
             })
 
+    logger.debug("Loaded %d messages", len(messages))
+
     return {
         'conversation_id': conversation_id,
         'messages': messages
@@ -148,6 +157,11 @@ def standardize_format(raw_conversation: Dict[str, Any]) -> Dict[str, Any]:
         raise ValueError("Input must contain 'conversation_id' and 'messages' keys.")
 
     standardized_messages: List[Dict[str, Optional[str]]] = []
+    logger.debug(
+        "Standardizing conversation %s with %d messages",
+        raw_conversation.get('conversation_id'),
+        len(raw_conversation.get('messages', [])),
+    )
     for msg in raw_conversation['messages']:
         sender = msg.get('sender', None)
         text = msg.get('text', '') or ''
@@ -175,6 +189,8 @@ def standardize_format(raw_conversation: Dict[str, Any]) -> Dict[str, Any]:
             'timestamp': normalized_ts,
             'text': text
         })
+
+    logger.debug("Standardization produced %d messages", len(standardized_messages))
 
     return {
         'conversation_id': raw_conversation['conversation_id'],
