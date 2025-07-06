@@ -3,7 +3,10 @@
 import os
 import time
 from typing import Dict, Any, Optional
-import requests
+try:
+    import requests  # type: ignore
+except Exception:  # pragma: no cover - optional dependency for tests
+    requests = None
 
 # Load from environment (dotenv is already configured elsewhere)
 MISTRAL_KEY = os.getenv("MISTRAL_API_KEY")
@@ -42,6 +45,9 @@ def call_mistral(
           }
         or raises on permanent failure.
     """
+    if requests is None:
+        raise RuntimeError("requests package not available")
+
     key = api_key or MISTRAL_KEY
     if not key:
         raise RuntimeError("Missing MISTRAL_API_KEY in environment.")
