@@ -39,6 +39,7 @@ except Exception:  # pragma: no cover - make optional for tests
 
 from scripts import input_parser, static_feature_extractor
 from scripts.judge_conversation import judge_conversation_llm
+from scripts.judge_utils import merge_judge_results
 import scorer
 
 # Flags added beyond the original four categories
@@ -963,8 +964,9 @@ def update_output(contents, view_mode, download_clicks, judge_clicks, provider, 
             else:
                 judge_div = html.Div("No manipulative bot messages detected.", className="text-muted")
 
-            summary_text = summarize_judge_results(judge_results)
-            judge_timeline = compute_llm_flag_timeline(judge_results, len(results["features"]))
+            merged_for_plots = merge_judge_results(judge_results)
+            summary_text = summarize_judge_results(merged_for_plots)
+            judge_timeline = compute_llm_flag_timeline(merged_for_plots, len(results["features"]))
             if any(judge_timeline):
                 timeline_fig.add_trace(
                     go.Scatter(
@@ -976,8 +978,9 @@ def update_output(contents, view_mode, download_clicks, judge_clicks, provider, 
                     )
                 )
     if judge_results is not None:
+        merged_for_plots = merge_judge_results(judge_results)
         comparison_fig = build_flag_comparison_figure(
-            results["features"], judge_results, bg, text_color
+            results["features"], merged_for_plots, bg, text_color
         )
     else:
         comparison_fig = go.Figure(layout=go.Layout(paper_bgcolor=bg, plot_bgcolor=bg))
