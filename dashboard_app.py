@@ -680,6 +680,161 @@ def update_output(contents, view_mode, download_clicks, judge_clicks, provider, 
                 ],
                 title="Reinforcement Loops",
             ),
+            dbc.AccordionItem(
+                children=[
+                    html.P(
+                        "Guilt Trips rely on shame or implied disappointment to"
+                        " pressure users into compliance. By presenting refusal"
+                        " as selfish or hurtful, manipulators tap our desire to"
+                        " avoid letting others down."
+                    ),
+                    html.Ul(
+                        [
+                            html.Li("Implying the user is letting someone down."),
+                            html.Li("Suggesting inaction will hurt feelings."),
+                            html.Li("Framing refusal as ungrateful or disloyal."),
+                        ]
+                    ),
+                ],
+                title="Guilt Trips",
+            ),
+            dbc.AccordionItem(
+                children=[
+                    html.P(
+                        "Social Proof taps into our instinct to follow the crowd."
+                        " Highlighting how popular an action is nudges hesitant"
+                        " users to conform."
+                    ),
+                    html.Ul(
+                        [
+                            html.Li("Showing large numbers of likes or follows."),
+                            html.Li("Testimonials from supposed satisfied users."),
+                            html.Li("Real-time alerts that others just signed up."),
+                        ]
+                    ),
+                ],
+                title="Social Proof",
+            ),
+            dbc.AccordionItem(
+                children=[
+                    html.P(
+                        "Authority appeals cite experts or official sources so"
+                        " people comply with less skepticism. When information"
+                        " appears backed by power or expertise, it carries extra"
+                        " weight."
+                    ),
+                    html.Ul(
+                        [
+                            html.Li("Referencing supposed experts or research."),
+                            html.Li("Displaying official-looking badges or logos."),
+                            html.Li("Claiming policies require a specific action."),
+                        ]
+                    ),
+                ],
+                title="Authority",
+            ),
+            dbc.AccordionItem(
+                children=[
+                    html.P(
+                        "Reciprocity offers a small favor so users feel indebted"
+                        " to return the gesture. That sense of obligation can"
+                        " drive acceptance of larger requests."
+                    ),
+                    html.Ul(
+                        [
+                            html.Li("Free trials that lead to paid upgrades."),
+                            html.Li("Personalized favors asking for commitments."),
+                            html.Li("Discounts exchanged for personal data."),
+                        ]
+                    ),
+                ],
+                title="Reciprocity",
+            ),
+            dbc.AccordionItem(
+                children=[
+                    html.P(
+                        "Consistency pressures people to act in line with past"
+                        " commitments. Once someone agrees publicly, they often"
+                        " continue even if circumstances change."
+                    ),
+                    html.Ul(
+                        [
+                            html.Li("Reminders about previous promises."),
+                            html.Li("Follow-ups referencing earlier choices."),
+                            html.Li("Highlighting others who keep their streaks."),
+                        ]
+                    ),
+                ],
+                title="Consistency",
+            ),
+            dbc.AccordionItem(
+                children=[
+                    html.P(
+                        "Dependency is fostered when a service makes itself"
+                        " indispensable, locking users in so it gains leverage"
+                        " over future choices."
+                    ),
+                    html.Ul(
+                        [
+                            html.Li("Locking data or contacts behind the platform."),
+                            html.Li("Gradually removing alternative options."),
+                            html.Li("Features that only work within one ecosystem."),
+                        ]
+                    ),
+                ],
+                title="Dependency",
+            ),
+            dbc.AccordionItem(
+                children=[
+                    html.P(
+                        "Fear or Threats intimidate users with dire consequences"
+                        " if they do not comply. The stress of potential loss"
+                        " pushes quick action."
+                    ),
+                    html.Ul(
+                        [
+                            html.Li("Warnings of account suspension or penalties."),
+                            html.Li("Alarming predictions of negative outcomes."),
+                            html.Li("Security alerts demanding immediate action."),
+                        ]
+                    ),
+                ],
+                title="Fear/Threats",
+            ),
+            dbc.AccordionItem(
+                children=[
+                    html.P(
+                        "Gaslighting twists facts so users question their own"
+                        " perception. Repeated contradictions erode confidence"
+                        " in personal judgment."
+                    ),
+                    html.Ul(
+                        [
+                            html.Li("Contradicting the user's recollection."),
+                            html.Li("Blaming issues entirely on user error."),
+                            html.Li("Insisting problematic events never happened."),
+                        ]
+                    ),
+                ],
+                title="Gaslighting",
+            ),
+            dbc.AccordionItem(
+                children=[
+                    html.P(
+                        "Deception involves misleading or false statements to"
+                        " secure compliance. Hiding the truth prevents informed"
+                        " decisions."
+                    ),
+                    html.Ul(
+                        [
+                            html.Li("Fake testimonials or statistics."),
+                            html.Li("Omitting key details about costs."),
+                            html.Li("Pretending to be human when it's actually a bot."),
+                        ]
+                    ),
+                ],
+                title="Deception",
+            ),
         ],
         always_open=True,
         flush=True,
