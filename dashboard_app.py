@@ -118,7 +118,7 @@ def parse_uploaded_file(contents: str, filename: str) -> Dict[str, Any]:
 def analyze_conversation(conv: Dict[str, Any]) -> Dict[str, Any]:
     features = static_feature_extractor.extract_conversation_features(conv)
     trust_score = scorer.score_trust(features)
-    risk = round((1.0 - trust_score) * 1000)
+    risk = scorer.compute_risk_score(features)
     summary = {
         'dark_patterns': sum(1 for f in features if f['flags'].get('dark_ui')),
         'emotional_framing': sum(f['flags'].get('emotion_count', 0) for f in features),
@@ -165,6 +165,7 @@ default_figure = go.Figure(
 app.layout = html.Div([
     html.Link(id="theme-link", rel="stylesheet", href=DARK_THEME),
     dcc.Store(id="theme-store", data="dark"),
+    dcc.Store(id="llm-debug", data=[]),
     dbc.Container(
         fluid=True,
         children=[
@@ -348,6 +349,7 @@ app.layout = html.Div([
                                         className="mt-3",
                                     ),
                                     dcc.Download(id="download-json"),
+                                    html.Pre(id="debug-output", className="mt-3 text-light", style={"whiteSpace": "pre-wrap"}),
                                 ]
                             ),
                         ],
@@ -423,6 +425,7 @@ app.layout = html.Div([
         Output("dominance-table", "children"),
         Output("explanations", "children"),
         Output("download-json", "data"),
+        Output("llm-debug", "data"),
     ],
     [
         Input("upload-data", "contents"),
@@ -432,12 +435,15 @@ app.layout = html.Div([
         Input("llm-provider", "value"),
         Input("pattern-filter", "value"),
     ],
-    [State("upload-data", "filename"), State("theme-toggle", "value")],
+    [State("upload-data", "filename"), State("theme-toggle", "value"), State("llm-debug", "data")],
 )
 
-def update_output(contents, view_mode, download_clicks, judge_clicks, provider, selected_patterns, filename, light_on):
+def update_output(contents, view_mode, download_clicks, judge_clicks, provider, selected_patterns, filename, light_on, debug_log):
     bg = "#ffffff" if light_on else "#1a1a1a"
     text_color = "black" if light_on else "white"
+    log_entries = list(debug_log or [])
+    def log(msg):
+        log_entries.append(f"[{datetime.utcnow().isoformat()}] {msg}")
     if contents is None:
         empty_fig = go.Figure(layout=go.Layout(paper_bgcolor=bg, plot_bgcolor=bg))
         return [
@@ -456,10 +462,12 @@ def update_output(contents, view_mode, download_clicks, judge_clicks, provider, 
             "",
             "",
             None,
+            debug_log,
         ]
 
     conv = parse_uploaded_file(contents, filename)
     results = analyze_conversation(conv)
+    log("analysis complete")
 
     ts = datetime.utcnow().isoformat()
     file_info = f"{filename} ({ts})"
@@ -672,6 +680,161 @@ def update_output(contents, view_mode, download_clicks, judge_clicks, provider, 
                 ],
                 title="Reinforcement Loops",
             ),
+            dbc.AccordionItem(
+                children=[
+                    html.P(
+                        "Guilt Trips rely on shame or implied disappointment to"
+                        " pressure users into compliance. By presenting refusal"
+                        " as selfish or hurtful, manipulators tap our desire to"
+                        " avoid letting others down."
+                    ),
+                    html.Ul(
+                        [
+                            html.Li("Implying the user is letting someone down."),
+                            html.Li("Suggesting inaction will hurt feelings."),
+                            html.Li("Framing refusal as ungrateful or disloyal."),
+                        ]
+                    ),
+                ],
+                title="Guilt Trips",
+            ),
+            dbc.AccordionItem(
+                children=[
+                    html.P(
+                        "Social Proof taps into our instinct to follow the crowd."
+                        " Highlighting how popular an action is nudges hesitant"
+                        " users to conform."
+                    ),
+                    html.Ul(
+                        [
+                            html.Li("Showing large numbers of likes or follows."),
+                            html.Li("Testimonials from supposed satisfied users."),
+                            html.Li("Real-time alerts that others just signed up."),
+                        ]
+                    ),
+                ],
+                title="Social Proof",
+            ),
+            dbc.AccordionItem(
+                children=[
+                    html.P(
+                        "Authority appeals cite experts or official sources so"
+                        " people comply with less skepticism. When information"
+                        " appears backed by power or expertise, it carries extra"
+                        " weight."
+                    ),
+                    html.Ul(
+                        [
+                            html.Li("Referencing supposed experts or research."),
+                            html.Li("Displaying official-looking badges or logos."),
+                            html.Li("Claiming policies require a specific action."),
+                        ]
+                    ),
+                ],
+                title="Authority",
+            ),
+            dbc.AccordionItem(
+                children=[
+                    html.P(
+                        "Reciprocity offers a small favor so users feel indebted"
+                        " to return the gesture. That sense of obligation can"
+                        " drive acceptance of larger requests."
+                    ),
+                    html.Ul(
+                        [
+                            html.Li("Free trials that lead to paid upgrades."),
+                            html.Li("Personalized favors asking for commitments."),
+                            html.Li("Discounts exchanged for personal data."),
+                        ]
+                    ),
+                ],
+                title="Reciprocity",
+            ),
+            dbc.AccordionItem(
+                children=[
+                    html.P(
+                        "Consistency pressures people to act in line with past"
+                        " commitments. Once someone agrees publicly, they often"
+                        " continue even if circumstances change."
+                    ),
+                    html.Ul(
+                        [
+                            html.Li("Reminders about previous promises."),
+                            html.Li("Follow-ups referencing earlier choices."),
+                            html.Li("Highlighting others who keep their streaks."),
+                        ]
+                    ),
+                ],
+                title="Consistency",
+            ),
+            dbc.AccordionItem(
+                children=[
+                    html.P(
+                        "Dependency is fostered when a service makes itself"
+                        " indispensable, locking users in so it gains leverage"
+                        " over future choices."
+                    ),
+                    html.Ul(
+                        [
+                            html.Li("Locking data or contacts behind the platform."),
+                            html.Li("Gradually removing alternative options."),
+                            html.Li("Features that only work within one ecosystem."),
+                        ]
+                    ),
+                ],
+                title="Dependency",
+            ),
+            dbc.AccordionItem(
+                children=[
+                    html.P(
+                        "Fear or Threats intimidate users with dire consequences"
+                        " if they do not comply. The stress of potential loss"
+                        " pushes quick action."
+                    ),
+                    html.Ul(
+                        [
+                            html.Li("Warnings of account suspension or penalties."),
+                            html.Li("Alarming predictions of negative outcomes."),
+                            html.Li("Security alerts demanding immediate action."),
+                        ]
+                    ),
+                ],
+                title="Fear/Threats",
+            ),
+            dbc.AccordionItem(
+                children=[
+                    html.P(
+                        "Gaslighting twists facts so users question their own"
+                        " perception. Repeated contradictions erode confidence"
+                        " in personal judgment."
+                    ),
+                    html.Ul(
+                        [
+                            html.Li("Contradicting the user's recollection."),
+                            html.Li("Blaming issues entirely on user error."),
+                            html.Li("Insisting problematic events never happened."),
+                        ]
+                    ),
+                ],
+                title="Gaslighting",
+            ),
+            dbc.AccordionItem(
+                children=[
+                    html.P(
+                        "Deception involves misleading or false statements to"
+                        " secure compliance. Hiding the truth prevents informed"
+                        " decisions."
+                    ),
+                    html.Ul(
+                        [
+                            html.Li("Fake testimonials or statistics."),
+                            html.Li("Omitting key details about costs."),
+                            html.Li("Pretending to be human when it's actually a bot."),
+                        ]
+                    ),
+                ],
+                title="Deception",
+            ),
         ],
         always_open=True,
         flush=True,
@@ -682,8 +845,11 @@ def update_output(contents, view_mode, download_clicks, judge_clicks, provider, 
     judge_div = html.Div()
     if judge_clicks:
         try:
+            log(f"requesting {provider or 'openai'} ...")
             judge_results = judge_conversation_llm(conv, provider=provider or "openai")
+            log("received response")
         except Exception as exc:  # pragma: no cover - network errors etc
+            log(f"error: {exc}")
             judge_div = dbc.Alert(str(exc), color="warning", className="mt-2")
         else:
             if judge_results and isinstance(judge_results, dict):
@@ -696,6 +862,7 @@ def update_output(contents, view_mode, download_clicks, judge_clicks, provider, 
                         row.append(html.Td(str(flags.get(f, False))))
                     rows.append(html.Tr(row))
                 judge_div = html.Table(rows, className="table table-sm table-dark")
+                log("processed results")
             else:
                 judge_div = html.Div("No manipulative bot messages detected.", className="text-muted")
 
@@ -735,12 +902,18 @@ def update_output(contents, view_mode, download_clicks, judge_clicks, provider, 
         dominance_table,
         explanations,
         download_data,
+        log_entries,
     )
 
 
 @app.callback(Output("theme-link", "href"), Input("theme-toggle", "value"))
 def toggle_theme(light_on: bool):
     return LIGHT_THEME if light_on else DARK_THEME
+
+
+@app.callback(Output("debug-output", "children"), Input("llm-debug", "data"))
+def display_debug(logs):
+    return "\n".join(logs or [])
 
 
 if __name__ == "__main__":
