@@ -1,12 +1,13 @@
 # alethia/api/chatgpt_api.py
 
-import time
 import os
+import time
+from typing import Dict, Any, Optional
+
 try:
     import openai  # type: ignore
 except Exception:  # pragma: no cover - optional dependency for tests
     openai = None
-from typing import Dict, Any, Optional
 
 # Optionally: set your API key here or rely on OPENAI_API_KEY environment variable
 # openai.api_key = "YOUR_OPENAI_API_KEY"
@@ -43,36 +44,64 @@ def call_chatgpt(
     if openai is None:
         raise RuntimeError("openai package not available")
 
-    # If an api_key was passed explicitly, set it:
+    openai_key = os.getenv("OPENAI_API_KEY")
+    key = api_key or openai_key
+    if not key:
+        raise RuntimeError("Missing OPENAI_API_KEY in environment.")
 
-    OPENAI_KEY = os.getenv("OPENAI_API_KEY")
-    api_key = OPENAI_KEY
+    version = getattr(openai, "__version__", "0")
+    try:
+        major = int(str(version).split(".")[0])
+    except Exception:
+        major = 0
+    use_client = major >= 1 and hasattr(openai, "OpenAI")
 
+    if hasattr(openai, "error"):
+        error_mod = openai.error
+    else:
+        error_mod = openai
+    RateLimitError = getattr(error_mod, "RateLimitError", Exception)
+    APIConnectionError = getattr(error_mod, "APIConnectionError", Exception)
+    OpenAIError = getattr(error_mod, "OpenAIError", Exception)
+
+    client = openai.OpenAI(api_key=key) if use_client else None
+    if not use_client:
+        openai.api_key = key
 
     attempt = 0
+    last_err: Optional[Exception] = None
     while attempt < retry_attempts:
         try:
-            response = openai.ChatCompletion.create(
-                model=model,
-                messages=[{"role": "user", "content": prompt}],
-                max_tokens=max_tokens,
-                temperature=temperature,
-                top_p=top_p,
-                n=n,
-            )
+            if use_client:
+                response = client.chat.completions.create(
+                    model=model,
+                    messages=[{"role": "user", "content": prompt}],
+                    max_tokens=max_tokens,
+                    temperature=temperature,
+                    top_p=top_p,
+                    n=n,
+                )
+            else:
+                response = openai.ChatCompletion.create(
+                    model=model,
+                    messages=[{"role": "user", "content": prompt}],
+                    max_tokens=max_tokens,
+                    temperature=temperature,
+                    top_p=top_p,
+                    n=n,
+                )
             return response
-        except openai.error.RateLimitError as e:
+        except (RateLimitError, APIConnectionError) as e:
+            last_err = e
             attempt += 1
             wait_time = retry_backoff ** attempt
-            print(f"[ChatGPT] Rate limit hit – retrying in {wait_time:.1f}s (attempt {attempt}/{retry_attempts})")
+            print(
+                f"[ChatGPT] {e.__class__.__name__} – retrying in {wait_time:.1f}s "
+                f"(attempt {attempt}/{retry_attempts})"
+            )
             time.sleep(wait_time)
-        except openai.error.APIConnectionError as e:
-            attempt += 1
-            wait_time = retry_backoff ** attempt
-            print(f"[ChatGPT] Connection error – retrying in {wait_time:.1f}s (attempt {attempt}/{retry_attempts})")
-            time.sleep(wait_time)
-        except Exception as e:
-            # For other errors, re-raise
-            raise
+        except OpenAIError as e:
+            raise RuntimeError(f"[ChatGPT] API call failed: {e}") from e
 
-    raise RuntimeError(f"[ChatGPT] Failed after {retry_attempts} attempts due to rate limits or network errors.")
+    raise RuntimeError(
+        f"[ChatGPT] Failed after {retry_attempts} attempts.") from last_err
