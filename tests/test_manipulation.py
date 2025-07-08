@@ -17,6 +17,31 @@ def test_detect_manipulation():
     assert md.detect_manipulation({}) == {}
 
 
+def test_detect_manipulation_object():
+    class Msg:
+        def __init__(self, content):
+            self.content = content
+
+    class Choice:
+        def __init__(self, content):
+            self.message = Msg(content)
+
+    class DummyResp:
+        def __init__(self, content):
+            self.choices = [Choice(content)]
+
+        def model_dump(self):
+            return {"choices": [{"message": {"content": self.choices[0].message.content}}]}
+
+    obj = DummyResp('{"key": "value"}')
+    assert md.detect_manipulation(obj) == {"key": "value"}
+
+
+def test_detect_manipulation_with_noise():
+    resp = {"choices": [{"message": {"content": 'Here\nit is:\n```json\n{"key": "value"}\n```'}}]}
+    assert md.detect_manipulation(resp) == {"key": "value"}
+
+
 def test_classify_manipulation_type():
     assert md.classify_manipulation_type({"urgency": True}) == "pressure"
     assert md.classify_manipulation_type({"guilt": True}) == "guilt"
