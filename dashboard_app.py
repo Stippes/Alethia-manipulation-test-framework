@@ -251,6 +251,41 @@ default_figure = go.Figure(
     ),
 )
 
+default_timeline = go.Figure(
+    data=[go.Scatter(x=[], y=[])],
+    layout=go.Layout(
+        title="\U0001F4CA Manipulation Intensity Over Time",
+        paper_bgcolor="#1a1a1a",
+        plot_bgcolor="#1a1a1a",
+        font=dict(color="white"),
+        xaxis=dict(title="Message Index", color="white"),
+        yaxis=dict(title="Active Flags", color="white"),
+    ),
+)
+
+default_comparison = go.Figure(
+    data=[go.Bar(x=[], y=[])],
+    layout=go.Layout(
+        title="\U0001F4CA Flag Counts: Heuristic vs LLM",
+        paper_bgcolor="#1a1a1a",
+        plot_bgcolor="#1a1a1a",
+        font=dict(color="white"),
+        xaxis=dict(title="Flag", color="white"),
+        yaxis=dict(title="Count", color="white"),
+    ),
+)
+
+
+def create_empty_figure(title: str, bg: str, text_color: str) -> "go.Figure":
+    return go.Figure(
+        layout=go.Layout(
+            title=title,
+            paper_bgcolor=bg,
+            plot_bgcolor=bg,
+            font=dict(color=text_color),
+        )
+    )
+
 app.layout = html.Div([
     html.Link(id="theme-link", rel="stylesheet", href=DARK_THEME),
     dcc.Store(id="theme-store", data="dark"),
@@ -550,19 +585,21 @@ def update_output(contents, view_mode, download_clicks, judge_clicks, provider, 
         logger.info(msg)
         log_entries.append(f"[{datetime.utcnow().isoformat()}] {msg}")
     if contents is None:
-        empty_fig = go.Figure(layout=go.Layout(paper_bgcolor=bg, plot_bgcolor=bg))
+        empty_fig = create_empty_figure("Waiting for upload", bg, text_color)
+        timeline_empty = create_empty_figure("Waiting for upload", bg, text_color)
+        comparison_empty = create_empty_figure("Waiting for upload", bg, text_color)
         return [
-            "",
+            "No file loaded",
             "",
             "",
             "",
             "",
             "",
             *["" for _ in NEW_FLAGS],
-            [],
+            [html.Div("Upload a conversation to begin", className="text-muted")],
             empty_fig,
-            empty_fig,
-            empty_fig,
+            timeline_empty,
+            comparison_empty,
             "",
             "",
             html.Div(),
@@ -651,7 +688,7 @@ def update_output(contents, view_mode, download_clicks, judge_clicks, provider, 
         ),
     )
 
-    comparison_fig = go.Figure(layout=go.Layout(paper_bgcolor=bg, plot_bgcolor=bg))
+    comparison_fig = create_empty_figure("Flag Counts: Heuristic vs LLM", bg, text_color)
 
     most_msg = results["most_manipulative"]
     if most_msg:
@@ -1001,7 +1038,7 @@ def update_output(contents, view_mode, download_clicks, judge_clicks, provider, 
             results["features"], merged_for_plots, bg, text_color
         )
     else:
-        comparison_fig = go.Figure(layout=go.Layout(paper_bgcolor=bg, plot_bgcolor=bg))
+        comparison_fig = create_empty_figure("Flag Counts: Heuristic vs LLM", bg, text_color)
 
     download_data = None
     if download_clicks:

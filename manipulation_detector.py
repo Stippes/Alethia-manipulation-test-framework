@@ -12,7 +12,15 @@ def detect_manipulation(api_response: Dict[str, Any]) -> Dict[str, Any]:
     an empty dictionary.
     """
     try:
-        content = api_response["choices"][0]["message"]["content"]
+        if isinstance(api_response, dict):
+            content = api_response["choices"][0]["message"]["content"]
+        elif hasattr(api_response, "model_dump"):
+            data = api_response.model_dump()
+            content = data["choices"][0]["message"]["content"]
+        elif hasattr(api_response, "choices"):
+            content = api_response.choices[0].message.content
+        else:
+            return {}
     except Exception:
         return {}
 
