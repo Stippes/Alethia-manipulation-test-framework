@@ -79,7 +79,16 @@ def _judge_single(conversation: Dict[str, Any], provider: str) -> Dict[str, Any]
         raise ValueError(f"Unsupported provider: {provider}")
 
     try:
-        content = resp["choices"][0]["message"]["content"]
+        if isinstance(resp, dict):
+            content = resp["choices"][0]["message"]["content"]
+        elif hasattr(resp, "model_dump"):
+            data = resp.model_dump()
+            content = data["choices"][0]["message"]["content"]
+        elif hasattr(resp, "choices"):
+            content = resp.choices[0].message.content
+        else:
+            raise TypeError("Unsupported response type")
+
         logger.debug("Received response from %s", provider)
         llm_logger.info("%s: %s", provider, content)
 
