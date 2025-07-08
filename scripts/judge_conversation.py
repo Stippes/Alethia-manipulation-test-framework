@@ -6,6 +6,7 @@ from typing import Any, Dict
 import os
 import logging
 from logging_utils import setup_logging, get_llm_logger
+from helpers import extract_json_block
 
 
 from api.api_calls import (
@@ -79,11 +80,23 @@ def _judge_single(conversation: Dict[str, Any], provider: str) -> Dict[str, Any]
         raise ValueError(f"Unsupported provider: {provider}")
 
     try:
-        content = resp["choices"][0]["message"]["content"]
+        if isinstance(resp, dict):
+            content = resp["choices"][0]["message"]["content"]
+        elif hasattr(resp, "model_dump"):
+            data = resp.model_dump()
+            content = data["choices"][0]["message"]["content"]
+        elif hasattr(resp, "choices"):
+            content = resp.choices[0].message.content
+        else:
+            raise TypeError("Unsupported response type")
+
         logger.debug("Received response from %s", provider)
         llm_logger.info("%s: %s", provider, content)
 
-        return json.loads(content)
+        json_str = extract_json_block(content)
+        if json_str is None:
+            raise ValueError("no JSON found")
+        return json.loads(json_str)
     except Exception as exc:
         logger.warning("Failed to parse response from %s: %s", provider, exc)
         return []

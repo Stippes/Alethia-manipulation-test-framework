@@ -90,6 +90,15 @@ def call_chatgpt(
                     top_p=top_p,
                     n=n,
                 )
+
+            # Newer OpenAI clients return a ChatCompletion object. Convert to a
+            # plain dictionary so callers can use a consistent interface.
+            if not isinstance(response, dict):
+                if hasattr(response, "model_dump"):
+                    response = response.model_dump()
+                elif hasattr(response, "to_dict"):
+                    response = response.to_dict()
+
             return response
         except (RateLimitError, APIConnectionError) as e:
             last_err = e
