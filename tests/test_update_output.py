@@ -216,6 +216,14 @@ def test_parse_uploaded_file_csv():
     assert len(result["messages"]) == 2
     assert result["messages"][1]["text"] == "hello"
 
+def test_parse_uploaded_file_unknown():
+    binary = b"\x00\x01"
+    enc = base64.b64encode(binary).decode()
+    contents = f"data:application/octet-stream;base64,{enc}"
+    result = da.parse_uploaded_file(contents, "data.bin")
+    assert result["conversation_id"] == "data"
+    assert result.get("error") == "Unsupported file type"
+
 def test_update_output_with_judge(monkeypatch):
     if hasattr(da, "_Dummy") and isinstance(da.dash, da._Dummy):
         pytest.skip("Dash not installed")

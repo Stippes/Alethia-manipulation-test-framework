@@ -2,7 +2,7 @@ import base64
 import io
 import json
 from datetime import datetime
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 import logging
 from logging_utils import setup_logging
 
@@ -146,6 +146,7 @@ def parse_uploaded_file(contents: str, filename: str) -> Dict[str, Any]:
     content_type, content_string = contents.split(',')
     decoded = base64.b64decode(content_string)
     name = filename.lower()
+    error: Optional[str] = None
     if name.endswith('.json'):
         raw = json.load(io.StringIO(decoded.decode('utf-8')))
         if isinstance(raw, dict) and 'messages' in raw:
@@ -182,8 +183,14 @@ def parse_uploaded_file(contents: str, filename: str) -> Dict[str, Any]:
             msgs.append({'sender': record.get('sender'), 'timestamp': record.get('timestamp'), 'text': record.get('text') or record.get('message', '')})
         conversation = {'conversation_id': filename.rsplit('.', 1)[0], 'messages': msgs}
     else:
+        logger.warning("Unsupported file type for %s", filename)
         conversation = {'conversation_id': filename.rsplit('.', 1)[0], 'messages': []}
-    return input_parser.standardize_format(conversation)
+        error = "Unsupported file type"
+
+    standardized = input_parser.standardize_format(conversation)
+    if error:
+        standardized["error"] = error
+    return standardized
 
 
 def analyze_conversation(conv: Dict[str, Any]) -> Dict[str, Any]:
