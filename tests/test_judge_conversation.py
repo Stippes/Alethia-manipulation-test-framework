@@ -202,3 +202,29 @@ def test_merge_judge_results_from_auto(monkeypatch):
     merged = merge_judge_results(result)
     texts = [f["text"] for f in merged["flagged"]]
     assert set(texts) == {"gemini", "claude", "mistral"}
+
+
+def test_judge_conversation_with_object_response(monkeypatch):
+    class Msg:
+        def __init__(self, content):
+            self.content = content
+
+    class Choice:
+        def __init__(self, content):
+            self.message = Msg(content)
+
+    class DummyResp:
+        def __init__(self, content):
+            self.choices = [Choice(content)]
+
+        def model_dump(self):
+            return {"choices": [{"message": {"content": self.choices[0].message.content}}]}
+
+    def fake_call(prompt, api_key=None, **kw):
+        return DummyResp('{"flagged": []}')
+
+    monkeypatch.setattr('scripts.judge_conversation.call_chatgpt', fake_call)
+
+    conv = {"conversation_id": "obj", "messages": [{"sender": "bot", "timestamp": None, "text": "hello"}]}
+    result = judge_conversation_llm(conv, provider="openai")
+    assert result == {"flagged": []}
