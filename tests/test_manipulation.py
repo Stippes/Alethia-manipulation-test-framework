@@ -37,6 +37,11 @@ def test_detect_manipulation_object():
     assert md.detect_manipulation(obj) == {"key": "value"}
 
 
+def test_detect_manipulation_with_noise():
+    resp = {"choices": [{"message": {"content": 'Here\nit is:\n```json\n{"key": "value"}\n```'}}]}
+    assert md.detect_manipulation(resp) == {"key": "value"}
+
+
 def test_classify_manipulation_type():
     assert md.classify_manipulation_type({"urgency": True}) == "pressure"
     assert md.classify_manipulation_type({"guilt": True}) == "guilt"
