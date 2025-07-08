@@ -1023,7 +1023,13 @@ def update_output(
             logger.warning("Judge request failed: %s", exc)
             judge_div = dbc.Alert(str(exc), color="warning", className="mt-2")
         else:
-            if judge_results and isinstance(judge_results, dict):
+            if not judge_results or not isinstance(judge_results, dict):
+                msg = "LLM judge results could not be parsed"
+                log(msg)
+                logger.warning("%s: %r", msg, judge_results)
+                judge_div = dbc.Alert(msg, color="warning", className="mt-2")
+                judge_results = None
+            else:
                 header = [html.Th("Index"), html.Th("Text")] + [html.Th(f.replace('_', ' ').title()) for f in ALL_FLAG_NAMES]
                 rows = [html.Tr(header)]
                 for item in judge_results.get("flagged", []):
@@ -1035,8 +1041,6 @@ def update_output(
                 judge_div = html.Table(rows, className="table table-sm table-dark")
                 log("processed results")
                 logger.debug("Merged judge results for plotting")
-            else:
-                judge_div = html.Div("No manipulative bot messages detected.", className="text-muted")
 
             merged_for_plots = merge_judge_results(judge_results)
             summary_text = summarize_judge_results(merged_for_plots)
