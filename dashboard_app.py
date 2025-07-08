@@ -688,7 +688,9 @@ def update_output(contents, view_mode, download_clicks, judge_clicks, provider, 
         ),
     )
 
-    comparison_fig = create_empty_figure("Flag Counts: Heuristic vs LLM", bg, text_color)
+    comparison_fig = build_flag_comparison_figure(
+        results["features"], {}, bg, text_color
+    )
 
     most_msg = results["most_manipulative"]
     if most_msg:
@@ -1038,7 +1040,9 @@ def update_output(contents, view_mode, download_clicks, judge_clicks, provider, 
             results["features"], merged_for_plots, bg, text_color
         )
     else:
-        comparison_fig = create_empty_figure("Flag Counts: Heuristic vs LLM", bg, text_color)
+        comparison_fig = build_flag_comparison_figure(
+            results["features"], {}, bg, text_color
+        )
 
     download_data = None
     if download_clicks:
