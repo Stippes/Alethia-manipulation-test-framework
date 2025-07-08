@@ -230,10 +230,17 @@ def test_update_output_with_judge(monkeypatch):
         "reinforcement_loops",
         *[f for f, _ in da.NEW_FLAGS]
     ]
-    out = da.update_output("data:,", "raw", 0, 1, "openai", selected, "x.json", True, [])
+    out = da.update_output("data:,", "raw", 0, 1, "openai", selected, "x.json", True, [], None)
     summary = out[20]
     timeline = out[17]
     comparison = out[18]
+    store = out[26]
     assert "Total flagged: 9" in summary
     assert len(timeline.data) == 2
     assert len(comparison.data) == 2
+
+    # second call without button click should reuse stored results
+    out2 = da.update_output("data:,", "raw", 0, 0, "openai", selected, "x.json", True, [], store)
+    assert "Total flagged: 9" in out2[20]
+    assert len(out2[17].data) == 2
+    assert len(out2[18].data) == 2
