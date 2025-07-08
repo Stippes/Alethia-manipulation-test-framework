@@ -237,3 +237,30 @@ def test_update_output_with_judge(monkeypatch):
     assert "Total flagged: 9" in summary
     assert len(timeline.data) == 2
     assert len(comparison.data) == 2
+
+
+def test_update_output_without_judge(monkeypatch):
+    if hasattr(da, "_Dummy") and isinstance(da.dash, da._Dummy):
+        pytest.skip("Dash not installed")
+
+    conv = json.loads(Path("data/manipulative_conversation.json").read_text())
+    monkeypatch.setattr(da, "parse_uploaded_file", lambda c, f: conv)
+
+    def fail(*a, **k):
+        raise AssertionError("judge_conversation_llm should not be called")
+
+    monkeypatch.setattr(da, "judge_conversation_llm", fail)
+    monkeypatch.setattr(da, "merge_judge_results", fail)
+
+    selected = [
+        "dark_patterns",
+        "emotional_framing",
+        "parasocial_pressure",
+        "reinforcement_loops",
+        *[f for f, _ in da.NEW_FLAGS]
+    ]
+
+    out = da.update_output("data:,", "raw", 0, 0, "openai", selected, "x.json", True, [])
+    comparison = out[18]
+    assert len(comparison.data) == 2
+    assert all(y == 0 for y in comparison.data[1].y)
