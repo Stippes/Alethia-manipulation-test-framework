@@ -69,15 +69,24 @@ def extract_json_block(text: str) -> Optional[str]:
     except Exception:
         pass
 
-    # Otherwise try to find the first {...} substring that parses
-    start = cleaned.find("{")
-    end = cleaned.rfind("}")
-    if start != -1 and end != -1 and end > start:
-        candidate = cleaned[start : end + 1]
-        try:
-            json.loads(candidate)
-            return candidate
-        except Exception:
-            return None
+    # Scan for the first valid JSON object in the text
+    decoder = json.JSONDecoder()
+    for i, ch in enumerate(cleaned):
+        if ch in "{[":
+            try:
+                obj, end = decoder.raw_decode(cleaned[i:])
+                return cleaned[i : i + end]
+            except Exception:
+                continue
+#     # Otherwise try to find the first {...} substring that parses
+#     start = cleaned.find("{")
+#     end = cleaned.rfind("}")
+#     if start != -1 and end != -1 and end > start:
+#         candidate = cleaned[start : end + 1]
+#         try:
+#             json.loads(candidate)
+#             return candidate
+#         except Exception:
+#             return None
 
     return None
