@@ -38,3 +38,46 @@ def safe_load_json(data: str) -> Optional[Any]:
 def log_error(message: str) -> None:
     """Log an error message using the logging module."""
     logging.error(message)
+
+
+def extract_json_block(text: str) -> Optional[str]:
+    """Return the first valid JSON object found in ``text``.
+
+    The function strips common code fences (``` or ```json) and then
+    attempts to locate a JSON object within the remaining string. If a
+    valid JSON block is found, the JSON substring is returned. Otherwise
+    ``None`` is returned.
+    """
+
+    if not isinstance(text, str):
+        return None
+
+    cleaned = text.strip()
+
+    # Remove ``` fences which LLMs often include
+    if cleaned.startswith("```"):
+        cleaned = cleaned.strip("`")
+        if cleaned.lower().startswith("json"):
+            cleaned = cleaned.partition("\n")[2]
+        if cleaned.endswith("```"):
+            cleaned = cleaned.rsplit("```", 1)[0]
+
+    # Try direct parse first
+    try:
+        json.loads(cleaned)
+        return cleaned
+    except Exception:
+        pass
+
+    # Otherwise try to find the first {...} substring that parses
+    start = cleaned.find("{")
+    end = cleaned.rfind("}")
+    if start != -1 and end != -1 and end > start:
+        candidate = cleaned[start : end + 1]
+        try:
+            json.loads(candidate)
+            return candidate
+        except Exception:
+            return None
+
+    return None
