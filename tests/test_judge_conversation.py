@@ -54,6 +54,17 @@ def test_judge_conversation_strip_fences(monkeypatch):
     assert judge_conversation_llm(conv, provider="openai") == {"flagged": []}
 
 
+def test_judge_conversation_multiple_json(monkeypatch):
+    conv = {"conversation_id": "mj", "messages": [{"sender": "bot", "timestamp": None, "text": "hi"}]}
+
+    def fake_call(prompt, api_key=None, **kw):
+        content = '{"flagged": []}\n{"other": true}'
+        return {"choices": [{"message": {"content": content}}]}
+
+    monkeypatch.setattr('scripts.judge_conversation.call_chatgpt', fake_call)
+    assert judge_conversation_llm(conv, provider="openai") == {"flagged": []}
+
+
 def test_judge_conversation_llm_old_api(monkeypatch):
     monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
 
