@@ -1,0 +1,6 @@
+dash
+plotly
+openai
+requests
+dash_bootstrap_components
+pytest

@@ -246,6 +246,40 @@ def test_update_output_with_judge(monkeypatch):
     assert len(out2[18].data) == 2
 
 
+def test_update_output_graph_values(monkeypatch):
+    if hasattr(da, "_Dummy") and isinstance(da.dash, da._Dummy):
+        pytest.skip("Dash not installed")
+
+    conv = json.loads(Path("data/manipulative_conversation.json").read_text())
+    monkeypatch.setattr(da, "parse_uploaded_file", lambda c, f: conv)
+    monkeypatch.setattr(da, "judge_conversation_llm", lambda conv, provider="auto": FLAGGED_EXAMPLE)
+
+    selected = [
+        "dark_patterns",
+        "emotional_framing",
+        "parasocial_pressure",
+        "reinforcement_loops",
+        *[f for f, _ in da.NEW_FLAGS],
+    ]
+
+    out = da.update_output("data:,", "raw", 0, 1, "openai", selected, "x.json", True, [], None)
+    timeline = out[17]
+    comparison = out[18]
+
+    analysis = da.analyze_conversation(conv)
+    merged = da.merge_judge_results(FLAGGED_EXAMPLE)
+    expected_jtimeline = da.compute_llm_flag_timeline(merged, len(analysis["features"]))
+
+    assert list(timeline.data[0].y) == analysis["manipulation_timeline"]
+    assert list(timeline.data[1].y) == expected_jtimeline
+    assert timeline.data[1].name == "LLM Judge"
+
+    heur, llm = da.compute_flag_counts(analysis["features"], merged)
+    assert list(comparison.data[0].y) == [heur[f] for f in da.ALL_FLAG_NAMES]
+    assert list(comparison.data[1].y) == [llm[f] for f in da.ALL_FLAG_NAMES]
+    assert comparison.data[1].name == "LLM"
+
+
 def test_update_output_judge_parse_failure(monkeypatch):
     if hasattr(da, "_Dummy") and isinstance(da.dash, da._Dummy):
         pytest.skip("Dash not installed")
