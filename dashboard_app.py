@@ -1052,38 +1052,44 @@ def update_output(
             logger.warning("Judge request failed: %s", exc)
             judge_div = dbc.Alert(str(exc), color="warning", className="mt-2")
         else:
-            if not judge_results or not isinstance(judge_results, dict):
+            if not isinstance(judge_results, dict):
                 msg = "LLM judge results could not be parsed"
                 log(msg)
                 logger.warning("%s: %r", msg, judge_results)
                 judge_div = dbc.Alert(msg, color="warning", className="mt-2")
                 judge_results = None
             else:
-                header = [html.Th("Index"), html.Th("Text")] + [html.Th(f.replace('_', ' ').title()) for f in ALL_FLAG_NAMES]
-                rows = [html.Tr(header)]
-                for item in judge_results.get("flagged", []):
-                    row = [html.Td(item.get("index")), html.Td(item.get("text"))]
-                    flags = item.get("flags", {})
-                    for f in ALL_FLAG_NAMES:
-                        row.append(html.Td(str(flags.get(f, False))))
-                    rows.append(html.Tr(row))
-                judge_div = html.Table(rows, className="table table-sm table-dark")
-                log("processed results")
-                logger.debug("Merged judge results for plotting")
-
-            merged_for_plots = merge_judge_results(judge_results)
-            summary_text = summarize_judge_results(merged_for_plots)
-            judge_timeline = compute_llm_flag_timeline(merged_for_plots, len(results["features"]))
-            if any(judge_timeline):
-                timeline_fig.add_trace(
-                    go.Scatter(
-                        y=judge_timeline,
-                        mode="markers",
-                        marker=dict(color="#EF553B"),
-                        name="LLM Judge",
-                        hovertemplate="Message %{x} – %{y} flags (LLM)",
-                    )
-                )
+                merged_for_plots = merge_judge_results(judge_results)
+                if not merged_for_plots.get("flagged"):
+                    msg = "LLM judge returned no results – check API keys."
+                    log(msg)
+                    judge_div = dbc.Alert(msg, color="warning", className="mt-2")
+                    summary_text = msg
+                    judge_results = None
+                else:
+                    header = [html.Th("Index"), html.Th("Text")] + [html.Th(f.replace('_', ' ').title()) for f in ALL_FLAG_NAMES]
+                    rows = [html.Tr(header)]
+                    for item in merged_for_plots.get("flagged", []):
+                        row = [html.Td(item.get("index")), html.Td(item.get("text"))]
+                        flags = item.get("flags", {})
+                        for f in ALL_FLAG_NAMES:
+                            row.append(html.Td(str(flags.get(f, False))))
+                        rows.append(html.Tr(row))
+                    judge_div = html.Table(rows, className="table table-sm table-dark")
+                    log("processed results")
+                    logger.debug("Merged judge results for plotting")
+                    summary_text = summarize_judge_results(merged_for_plots)
+                    judge_timeline = compute_llm_flag_timeline(merged_for_plots, len(results["features"]))
+                    if any(judge_timeline):
+                        timeline_fig.add_trace(
+                            go.Scatter(
+                                y=judge_timeline,
+                                mode="markers",
+                                marker=dict(color="#EF553B"),
+                                name="LLM Judge",
+                                hovertemplate="Message %{x} – %{y} flags (LLM)",
+                            )
+                        )
     elif judge_results is not None:
         if judge_results and isinstance(judge_results, dict):
             header = [html.Th("Index"), html.Th("Text")] + [html.Th(f.replace('_', ' ').title()) for f in ALL_FLAG_NAMES]

@@ -300,3 +300,27 @@ def test_update_output_judge_parse_failure(monkeypatch):
     assert "parse" in str(text).lower()
     logs = out[25]
     assert any("parse" in entry.lower() for entry in logs)
+
+
+def test_update_output_judge_no_results(monkeypatch):
+    if hasattr(da, "_Dummy") and isinstance(da.dash, da._Dummy):
+        pytest.skip("Dash not installed")
+
+    conv = json.loads(Path("data/manipulative_conversation.json").read_text())
+    monkeypatch.setattr(da, "parse_uploaded_file", lambda c, f: conv)
+    # simulate no API keys / empty judge results
+    monkeypatch.setattr(da, "judge_conversation_llm", lambda conv, provider="auto": {})
+
+    selected = [
+        "dark_patterns",
+        "emotional_framing",
+        "parasocial_pressure",
+        "reinforcement_loops",
+        *[f for f, _ in da.NEW_FLAGS],
+    ]
+
+    out = da.update_output("data:,", "raw", 0, 1, "openai", selected, "x.json", True, [], None)
+    assert "LLM judge returned no results" in out[20]
+    judge_div = out[21]
+    text = getattr(judge_div, "children", judge_div)
+    assert "check api keys" in str(text).lower()
