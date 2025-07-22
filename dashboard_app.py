@@ -550,9 +550,9 @@ app.layout = html.Div([
                                             "borderRadius": "0.25rem",
                                         },
                                     ),
-                                    dcc.Graph(id="pattern-graph", className="mt-4"),
-                                    dcc.Graph(id="manipulation-graph", className="mt-4"),
-                                    dcc.Graph(id="flag-comparison", className="mt-4"),
+                                    dcc.Graph(id="pattern-graph", figure=default_figure, className="mt-4"),
+                                    dcc.Graph(id="manipulation-graph", figure=default_timeline, className="mt-4"),
+                                    dcc.Graph(id="flag-comparison", figure=default_comparison, className="mt-4"),
                                     html.Div(id="most-manipulative", className="mt-3 text-light"),
                                     html.Div(id="llm-judge-results", className="mt-3"),
                                     dbc.Button(
