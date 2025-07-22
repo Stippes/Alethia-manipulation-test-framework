@@ -629,8 +629,37 @@ def update_output(
             None,
         ]
 
-    conv = parse_uploaded_file(contents, filename)
-    results = analyze_conversation(conv)
+    try:
+        conv = parse_uploaded_file(contents, filename)
+        results = analyze_conversation(conv)
+    except Exception as exc:  # pragma: no cover - unexpected parse/analyze errors
+        logger.exception("Failed to process uploaded file: %s", exc)
+        log_entries.append(f"[{datetime.utcnow().isoformat()}] error: {exc}")
+        empty_fig = create_empty_figure("Waiting for upload", bg, text_color)
+        timeline_empty = create_empty_figure("Waiting for upload", bg, text_color)
+        comparison_empty = create_empty_figure("Waiting for upload", bg, text_color)
+        return [
+            f"Error: {exc}",
+            "",
+            "",
+            "",
+            "",
+            "",
+            *["" for _ in NEW_FLAGS],
+            [html.Div("Upload a conversation to begin", className="text-muted")],
+            empty_fig,
+            timeline_empty,
+            comparison_empty,
+            "",
+            "",
+            html.Div(),
+            "",
+            "",
+            None,
+            log_entries,
+            None,
+        ]
+
     log("analysis complete")
     logger.debug("Finished analysis of uploaded file")
 
