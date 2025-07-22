@@ -19,6 +19,7 @@ try:
     from dash import dcc, html
     from dash.dependencies import Input, Output, State
     import plotly.graph_objs as go
+    import plotly.express as px
     import dash_bootstrap_components as dbc
 except Exception:  # pragma: no cover - make optional for tests
     class _Dummy:
@@ -114,7 +115,7 @@ def build_flag_comparison_figure(
     """Create bar chart comparing heuristic vs LLM flag counts."""
     heur, llm = compute_flag_counts(features, judge_results)
     labels = [f.replace("_", " ").title() for f in ALL_FLAG_NAMES]
-    return go.Figure(
+    fig = go.Figure(
         data=[
             go.Bar(
                 name="Heuristic",
@@ -128,17 +129,84 @@ def build_flag_comparison_figure(
                 y=[llm[f] for f in ALL_FLAG_NAMES],
                 marker_color="#EF553B",
             ),
-        ],
-        layout=go.Layout(
-            title="\U0001F4CA Flag Counts: Heuristic vs LLM",
-            barmode="group",
-            paper_bgcolor=bg,
-            plot_bgcolor=bg,
-            font=dict(color=text_color),
-            xaxis=dict(title="Flag", color=text_color, gridcolor="#444"),
-            yaxis=dict(title="Count", color=text_color, gridcolor="#444"),
-        ),
+        ]
     )
+    fig.update_layout(
+        title="\U0001F4CA Flag Counts: Heuristic vs LLM",
+        barmode="group",
+        paper_bgcolor=bg,
+        plot_bgcolor=bg,
+        font=dict(color=text_color),
+        xaxis=dict(title="Flag", color=text_color, gridcolor="#444"),
+        yaxis=dict(title="Count", color=text_color, gridcolor="#444"),
+    )
+    return fig
+
+
+def build_pattern_breakdown_figure(
+    summary: Dict[str, int],
+    selected: List[str],
+    bg: str,
+    text_color: str,
+) -> "go.Figure":
+    """Create bar chart for pattern summary."""
+    keys = [k for k in selected if k in summary]
+    bar_x = [k.replace("_", " ").title() for k in keys]
+    bar_y = [summary.get(k, 0) for k in keys]
+    colors = px.colors.qualitative.Dark24
+    fig = go.Figure(
+        data=[go.Bar(x=bar_x, y=bar_y, marker_color=colors[: len(bar_x)])]
+    )
+    fig.update_layout(
+        title="\U0001F4CA Pattern Breakdown",
+        paper_bgcolor=bg,
+        plot_bgcolor=bg,
+        font=dict(color=text_color),
+        xaxis=dict(title="Pattern Type", color=text_color, gridcolor="#444"),
+        yaxis=dict(title="Count", color=text_color, gridcolor="#444"),
+    )
+    return fig
+
+
+def build_timeline_figure(
+    heuristic_timeline: List[int],
+    judge_timeline: Optional[List[int]],
+    bg: str,
+    text_color: str,
+) -> "go.Figure":
+    """Create timeline figure with optional LLM trace."""
+    fig = go.Figure(
+        data=[
+            go.Scatter(
+                x=list(range(len(heuristic_timeline))),
+                y=heuristic_timeline,
+                mode="lines+markers",
+                line=dict(color="#FADFC9"),
+                hovertemplate="Message %{x} – %{y} manipulation flags",
+                name="Heuristic",
+            )
+        ]
+    )
+    fig.update_layout(
+        title="\U0001F4CA Manipulation Intensity Over Time",
+        paper_bgcolor=bg,
+        plot_bgcolor=bg,
+        font=dict(color=text_color),
+        xaxis=dict(title="Message Index", color=text_color, gridcolor="#444"),
+        yaxis=dict(title="Active Flags", color=text_color, gridcolor="#444"),
+    )
+    if judge_timeline and any(judge_timeline):
+        fig.add_trace(
+            go.Scatter(
+                x=list(range(len(judge_timeline))),
+                y=judge_timeline,
+                mode="markers",
+                marker=dict(color="#EF553B"),
+                name="LLM Judge",
+                hovertemplate="Message %{x} – %{y} flags (LLM)",
+            )
+        )
+    return fig
 
 
 def build_pattern_breakdown_figure(
@@ -1069,7 +1137,7 @@ def update_output(
 
 
     judge_div = html.Div()
-    summary_text = ""
+    summary_text = "No LLM judge results yet"
     if judge_clicks:
         try:
             log(f"requesting {provider or 'auto'} ...")
@@ -1082,10 +1150,12 @@ def update_output(
             logger.warning("Judge request failed: %s", exc)
             judge_div = dbc.Alert(str(exc), color="warning", className="mt-2")
             judge_results = None
+            summary_text = str(exc)
         except Exception as exc:  # pragma: no cover - network errors etc
             log(f"error: {exc}")
             logger.warning("Judge request failed: %s", exc)
             judge_div = dbc.Alert(str(exc), color="warning", className="mt-2")
+            summary_text = str(exc)
         else:
             if not isinstance(judge_results, dict):
                 msg = "LLM judge results could not be parsed"
