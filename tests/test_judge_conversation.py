@@ -180,6 +180,16 @@ def test_judge_conversation_auto_partial(monkeypatch):
     result = judge_conversation_llm(conv, provider="auto")
     assert list(result.keys()) == ["openai"]
 
+
+def test_judge_conversation_auto_no_keys(monkeypatch):
+    conv = {"conversation_id": "none", "messages": [{"sender": "bot", "timestamp": None, "text": "x"}]}
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    monkeypatch.delenv("CLAUDE_API_KEY", raising=False)
+    monkeypatch.delenv("MISTRAL_API_KEY", raising=False)
+    with pytest.raises(RuntimeError):
+        judge_conversation_llm(conv, provider="auto")
+
 def test_merge_judge_results_passthrough():
     data = {"flagged": [{"index": 0}]}
     assert merge_judge_results(data) == data
