@@ -35,6 +35,7 @@ except Exception:  # pragma: no cover - make optional for tests
     dcc = html = Input = Output = State = _Dummy()
     go = _Dummy()
     dbc = _Dummy()
+    px = _Dummy()
 
 setup_logging()
 logger = logging.getLogger(__name__)
