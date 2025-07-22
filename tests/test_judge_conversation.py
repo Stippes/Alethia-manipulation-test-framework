@@ -187,8 +187,9 @@ def test_judge_conversation_auto_no_keys(monkeypatch):
     monkeypatch.delenv("GEMINI_API_KEY", raising=False)
     monkeypatch.delenv("CLAUDE_API_KEY", raising=False)
     monkeypatch.delenv("MISTRAL_API_KEY", raising=False)
-    with pytest.raises(RuntimeError):
+    with pytest.raises(RuntimeError) as excinfo:
         judge_conversation_llm(conv, provider="auto")
+    assert "OPENAI_API_KEY" in str(excinfo.value)
 
 def test_merge_judge_results_passthrough():
     data = {"flagged": [{"index": 0}]}
@@ -268,5 +269,6 @@ def test_judge_conversation_auto_no_keys(monkeypatch):
     for env in ["OPENAI_API_KEY", "GEMINI_API_KEY", "CLAUDE_API_KEY", "MISTRAL_API_KEY"]:
         monkeypatch.delenv(env, raising=False)
 
-    with pytest.raises(RuntimeError):
+    with pytest.raises(RuntimeError) as excinfo:
         judge_conversation_llm(conv, provider="auto")
+    assert "OPENAI_API_KEY" in str(excinfo.value)

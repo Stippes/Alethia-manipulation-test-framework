@@ -1161,12 +1161,13 @@ def update_output(
             log("received response")
             logger.debug("Judge response parsed")
         except RuntimeError as exc:
-            log(f"error: {exc}")
-            logger.warning("Judge request failed: %s", exc)
-            judge_div = dbc.Alert(str(exc), color="warning", className="mt-2")
+            msg = str(exc)
+            log(f"error: {msg}")
+            logger.warning("Judge request failed: %s", msg)
+            judge_div = dbc.Alert(msg, color="warning", className="mt-2")
             judge_results = None
 
-            summary_text = str(exc)
+            summary_text = msg
         except Exception as exc:  # pragma: no cover - network errors etc
             log(f"error: {exc}")
             logger.warning("Judge request failed: %s", exc)
