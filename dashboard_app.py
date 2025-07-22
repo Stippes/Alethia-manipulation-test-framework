@@ -1077,10 +1077,11 @@ def update_output(
             judge_results = judge_conversation_llm(conv, provider=provider or "auto")
             log("received response")
             logger.debug("Judge response parsed")
-        except RuntimeError as exc:  # no API keys
+        except RuntimeError as exc:
             log(f"error: {exc}")
             logger.warning("Judge request failed: %s", exc)
             judge_div = dbc.Alert(str(exc), color="warning", className="mt-2")
+            judge_results = None
         except Exception as exc:  # pragma: no cover - network errors etc
             log(f"error: {exc}")
             logger.warning("Judge request failed: %s", exc)
