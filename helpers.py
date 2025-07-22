@@ -2,6 +2,8 @@
 
 import json
 import logging
+
+logger = logging.getLogger(__name__)
 from datetime import datetime
 from typing import Any, Optional
 
@@ -66,8 +68,8 @@ def extract_json_block(text: str) -> Optional[str]:
     try:
         json.loads(cleaned)
         return cleaned
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug("JSON parse failed: %s", exc)
 
     # Scan for the first valid JSON object in the text
     decoder = json.JSONDecoder()
