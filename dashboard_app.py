@@ -114,7 +114,7 @@ def build_flag_comparison_figure(
     judge_results: Dict[str, Any],
     bg: str,
     text_color: str,
-) -> go.Figure:
+):
     """Create bar chart comparing heuristic vs LLM flag counts."""
     heur, llm = compute_flag_counts(features, judge_results)
     labels = [f.replace("_", " ").title() for f in ALL_FLAG_NAMES]
@@ -151,7 +151,7 @@ def build_pattern_breakdown_figure(
     selected: List[str],
     bg: str,
     text_color: str,
-) -> go.Figure:
+):
     """Create bar chart for pattern summary."""
     keys = [k for k in selected if k in summary]
     bar_x = [k.replace("_", " ").title() for k in keys]
@@ -176,7 +176,7 @@ def build_timeline_figure(
     judge_timeline: Optional[List[int]],
     bg: str,
     text_color: str,
-) -> go.Figure:
+):
     """Create timeline figure with optional LLM trace."""
     fig = go.Figure(
         data=[
@@ -217,7 +217,7 @@ def build_pattern_breakdown_figure(
     selected: List[str],
     bg: str,
     text_color: str,
-) -> "go.Figure":
+):
     """Create bar chart for pattern summary."""
     raw_x = [k for k in summary if k in selected]
     bar_x = [k.replace("_", " ").title() for k in raw_x]
@@ -267,7 +267,7 @@ def build_timeline_figure(
     judge_timeline: Optional[List[int]],
     bg: str,
     text_color: str,
-) -> "go.Figure":
+):
     """Create timeline figure with optional LLM trace."""
     fig = go.Figure(
         data=[
@@ -438,7 +438,7 @@ default_comparison = go.Figure(
 )
 
 
-def create_empty_figure(title: str, bg: str, text_color: str) -> go.Figure:
+def create_empty_figure(title: str, bg: str, text_color: str):
     return go.Figure(
         layout=go.Layout(
             title=title,
