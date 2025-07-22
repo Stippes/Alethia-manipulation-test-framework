@@ -209,6 +209,83 @@ def build_timeline_figure(
     return fig
 
 
+def build_pattern_breakdown_figure(
+    summary: Dict[str, int],
+    selected: List[str],
+    bg: str,
+    text_color: str,
+) -> "go.Figure":
+    """Create bar chart for pattern summary."""
+    raw_x = [k for k in summary if k in selected]
+    bar_x = [k.replace("_", " ").title() for k in raw_x]
+    bar_y = [summary[k] for k in raw_x]
+    bar_colors = [
+        "#17BECF",
+        "#FF7F0E",
+        "#2CA02C",
+        "#D62728",
+        "#9467BD",
+        "#8C564B",
+        "#E377C2",
+        "#7F7F7F",
+        "#BCBD22",
+        "#1F77B4",
+        "#9EDAE5",
+        "#FF9896",
+        "#AEC7E8",
+    ]
+    return go.Figure(
+        data=[go.Bar(x=bar_x, y=bar_y, marker_color=bar_colors[: len(bar_x)])],
+        layout=go.Layout(
+            title="\U0001F4CA Pattern Breakdown",
+            paper_bgcolor=bg,
+            plot_bgcolor=bg,
+            font=dict(color=text_color),
+            xaxis=dict(title="Pattern Type", color=text_color, gridcolor="#444"),
+            yaxis=dict(title="Count", color=text_color, gridcolor="#444"),
+        ),
+    )
+
+
+def build_timeline_figure(
+    heuristic_timeline: List[int],
+    judge_timeline: Optional[List[int]],
+    bg: str,
+    text_color: str,
+) -> "go.Figure":
+    """Create timeline figure with optional LLM trace."""
+    fig = go.Figure(
+        data=[
+            go.Scatter(
+                y=heuristic_timeline,
+                mode="lines+markers",
+                line=dict(color="#FADFC9"),
+                hovertemplate="Message %{x} – %{y} manipulation flags",
+                name="Heuristic",
+            )
+        ],
+        layout=go.Layout(
+            title="\U0001F4CA Manipulation Intensity Over Time",
+            paper_bgcolor=bg,
+            plot_bgcolor=bg,
+            font=dict(color=text_color),
+            xaxis=dict(title="Message Index", color=text_color, gridcolor="#444"),
+            yaxis=dict(title="Active Flags", color=text_color, gridcolor="#444"),
+        ),
+    )
+    if judge_timeline and any(judge_timeline):
+        fig.add_trace(
+            go.Scatter(
+                y=judge_timeline,
+                mode="markers",
+                marker=dict(color="#EF553B"),
+                name="LLM Judge",
+                hovertemplate="Message %{x} – %{y} flags (LLM)",
+            )
+        )
+    return fig
+
+
 def parse_uploaded_file(contents: str, filename: str) -> Dict[str, Any]:
     logger.debug("Parsing uploaded file %s", filename)
     content_type, content_string = contents.split(',')
@@ -1068,10 +1145,11 @@ def update_output(
             judge_results = judge_conversation_llm(conv, provider=provider or "auto")
             log("received response")
             logger.debug("Judge response parsed")
-        except RuntimeError as exc:  # no API keys
+        except RuntimeError as exc:
             log(f"error: {exc}")
             logger.warning("Judge request failed: %s", exc)
             judge_div = dbc.Alert(str(exc), color="warning", className="mt-2")
+            judge_results = None
             summary_text = str(exc)
         except Exception as exc:  # pragma: no cover - network errors etc
             log(f"error: {exc}")
