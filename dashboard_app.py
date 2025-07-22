@@ -21,6 +21,7 @@ try:
     from dash import dcc, html
     from dash.dependencies import Input, Output, State
     import dash_bootstrap_components as dbc
+    import plotly.graph_objects as go
 except Exception:  # pragma: no cover - make optional for tests
     class _Dummy:
         def __getattr__(self, name):
@@ -104,6 +105,29 @@ def compute_flag_counts(
             if flags.get(f):
                 llm[f] += 1
     return heur, llm
+
+
+def build_flag_overview_graph(heur: Dict[str, int], llm: Dict[str, int]) -> "go.Figure":
+    """Return a grouped bar chart comparing heuristic and LLM flag counts."""
+    labels = [f.replace("_", " ").title() for f in ALL_FLAG_NAMES]
+    heur_vals = [heur.get(f, 0) for f in ALL_FLAG_NAMES]
+    llm_vals = [llm.get(f, 0) for f in ALL_FLAG_NAMES]
+    fig = go.Figure()
+    fig.add_bar(x=labels, y=heur_vals, name="Static Analysis")
+    fig.add_bar(x=labels, y=llm_vals, name="LM Analysis")
+    fig.update_layout(barmode="group", template="plotly_dark", xaxis_title="Technique", yaxis_title="Count")
+    return fig
+
+
+def build_timeline_graph(heur: List[int], llm: List[int]) -> "go.Figure":
+    """Return a line chart showing flags over message index."""
+    indices = list(range(len(heur)))
+    fig = go.Figure()
+    fig.add_scatter(x=indices, y=heur, mode="lines+markers", name="Static Analysis")
+    if llm:
+        fig.add_scatter(x=indices, y=llm, mode="lines+markers", name="LM Analysis")
+    fig.update_layout(template="plotly_dark", xaxis_title="Message Index", yaxis_title="Flags")
+    return fig
 
 
 
@@ -371,6 +395,7 @@ app.layout = html.Div([
                 ),
                 # Conversation & Graphs
                 dbc.Col(
+                    [
                     dbc.Card(
                         [
                             dbc.CardHeader(
@@ -412,6 +437,25 @@ app.layout = html.Div([
                         ],
                         className="mb-4 h-100 shadow-sm",
                     ),
+                    dbc.Card(
+                        [
+                            dbc.CardHeader("Manipulation Techniques Overview"),
+                            dbc.CardBody(
+                                dcc.Graph(id="flag-count-graph")
+                            ),
+                        ],
+                        className="mb-4 shadow-sm",
+                    ),
+                    dbc.Card(
+                        [
+                            dbc.CardHeader("Manipulation Timeline"),
+                            dbc.CardBody(
+                                dcc.Graph(id="timeline-graph")
+                            ),
+                        ],
+                        className="mb-4 shadow-sm",
+                    ),
+                    ],
                     width=6,
                 ),
                 # Explanations & Metrics
@@ -483,6 +527,8 @@ app.layout = html.Div([
         Output("download-json", "data"),
         Output("llm-debug", "data"),
         Output("judge-store", "data"),
+        Output("flag-count-graph", "figure"),
+        Output("timeline-graph", "figure"),
     ],
     [
         Input("upload-data", "contents"),
@@ -537,6 +583,8 @@ def update_output(
             None,
             debug_log,
             None,
+            go.Figure(),
+            go.Figure(),
         ]
 
     try:
@@ -562,6 +610,8 @@ def update_output(
             None,
             log_entries,
             None,
+            go.Figure(),
+            go.Figure(),
         ]
 
     log("analysis complete")
@@ -954,8 +1004,11 @@ def update_output(
     if judge_results is not None:
         merged_for_plots = merge_judge_results(judge_results)
         summary_text = summarize_judge_results(merged_for_plots)
-    
+
     download_data = None
+    heur_counts, llm_counts = compute_flag_counts(results["features"], merged_for_plots if judge_results is not None else {})
+    timeline = results["manipulation_timeline"]
+    llm_timeline = compute_llm_flag_timeline(merged_for_plots if judge_results is not None else {}, len(timeline))
     if download_clicks:
         payload = {"conversation": conv, "analysis": results}
         if judge_results is not None:
@@ -992,6 +1045,8 @@ def update_output(
         download_data,
         log_entries,
         judge_results,
+        build_flag_overview_graph(heur_counts, llm_counts),
+        build_timeline_graph(timeline, llm_timeline),
     )
 
 
