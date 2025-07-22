@@ -1,8 +1,10 @@
+from __future__ import annotations
+
 import base64
 import io
 import json
 from datetime import datetime
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional, Tuple
 import logging
 from logging_utils import setup_logging
 
@@ -19,6 +21,7 @@ try:
     from dash import dcc, html
     from dash.dependencies import Input, Output, State
     import plotly.graph_objs as go
+    import plotly.express as px
     import dash_bootstrap_components as dbc
 except Exception:  # pragma: no cover - make optional for tests
     class _Dummy:
@@ -78,9 +81,10 @@ ALL_FLAG_NAMES = [
 ]
 
 
-def compute_flag_counts(features: List[Dict[str, Any]], judge_results: Dict[str, Any]) -> (
-    Dict[str, int], Dict[str, int]
-):
+def compute_flag_counts(
+    features: List[Dict[str, Any]],
+    judge_results: Dict[str, Any],
+) -> Tuple[Dict[str, int], Dict[str, int]]:
     """Return heuristic and LLM counts for each flag.
 
     ``judge_results`` is expected to contain a top-level ``"flagged"`` list,
@@ -110,11 +114,11 @@ def build_flag_comparison_figure(
     judge_results: Dict[str, Any],
     bg: str,
     text_color: str,
-) -> "go.Figure":
+) -> go.Figure:
     """Create bar chart comparing heuristic vs LLM flag counts."""
     heur, llm = compute_flag_counts(features, judge_results)
     labels = [f.replace("_", " ").title() for f in ALL_FLAG_NAMES]
-    return go.Figure(
+    fig = go.Figure(
         data=[
             go.Bar(
                 name="Heuristic",
@@ -128,17 +132,84 @@ def build_flag_comparison_figure(
                 y=[llm[f] for f in ALL_FLAG_NAMES],
                 marker_color="#EF553B",
             ),
-        ],
-        layout=go.Layout(
-            title="\U0001F4CA Flag Counts: Heuristic vs LLM",
-            barmode="group",
-            paper_bgcolor=bg,
-            plot_bgcolor=bg,
-            font=dict(color=text_color),
-            xaxis=dict(title="Flag", color=text_color, gridcolor="#444"),
-            yaxis=dict(title="Count", color=text_color, gridcolor="#444"),
-        ),
+        ]
     )
+    fig.update_layout(
+        title="\U0001F4CA Flag Counts: Heuristic vs LLM",
+        barmode="group",
+        paper_bgcolor=bg,
+        plot_bgcolor=bg,
+        font=dict(color=text_color),
+        xaxis=dict(title="Flag", color=text_color, gridcolor="#444"),
+        yaxis=dict(title="Count", color=text_color, gridcolor="#444"),
+    )
+    return fig
+
+
+def build_pattern_breakdown_figure(
+    summary: Dict[str, int],
+    selected: List[str],
+    bg: str,
+    text_color: str,
+) -> go.Figure:
+    """Create bar chart for pattern summary."""
+    keys = [k for k in selected if k in summary]
+    bar_x = [k.replace("_", " ").title() for k in keys]
+    bar_y = [summary.get(k, 0) for k in keys]
+    colors = px.colors.qualitative.Dark24
+    fig = go.Figure(
+        data=[go.Bar(x=bar_x, y=bar_y, marker_color=colors[: len(bar_x)])]
+    )
+    fig.update_layout(
+        title="\U0001F4CA Pattern Breakdown",
+        paper_bgcolor=bg,
+        plot_bgcolor=bg,
+        font=dict(color=text_color),
+        xaxis=dict(title="Pattern Type", color=text_color, gridcolor="#444"),
+        yaxis=dict(title="Count", color=text_color, gridcolor="#444"),
+    )
+    return fig
+
+
+def build_timeline_figure(
+    heuristic_timeline: List[int],
+    judge_timeline: Optional[List[int]],
+    bg: str,
+    text_color: str,
+) -> go.Figure:
+    """Create timeline figure with optional LLM trace."""
+    fig = go.Figure(
+        data=[
+            go.Scatter(
+                x=list(range(len(heuristic_timeline))),
+                y=heuristic_timeline,
+                mode="lines+markers",
+                line=dict(color="#FADFC9"),
+                hovertemplate="Message %{x} – %{y} manipulation flags",
+                name="Heuristic",
+            )
+        ]
+    )
+    fig.update_layout(
+        title="\U0001F4CA Manipulation Intensity Over Time",
+        paper_bgcolor=bg,
+        plot_bgcolor=bg,
+        font=dict(color=text_color),
+        xaxis=dict(title="Message Index", color=text_color, gridcolor="#444"),
+        yaxis=dict(title="Active Flags", color=text_color, gridcolor="#444"),
+    )
+    if judge_timeline and any(judge_timeline):
+        fig.add_trace(
+            go.Scatter(
+                x=list(range(len(judge_timeline))),
+                y=judge_timeline,
+                mode="markers",
+                marker=dict(color="#EF553B"),
+                name="LLM Judge",
+                hovertemplate="Message %{x} – %{y} flags (LLM)",
+            )
+        )
+    return fig
 
 
 def parse_uploaded_file(contents: str, filename: str) -> Dict[str, Any]:
@@ -278,7 +349,7 @@ default_comparison = go.Figure(
 )
 
 
-def create_empty_figure(title: str, bg: str, text_color: str) -> "go.Figure":
+def create_empty_figure(title: str, bg: str, text_color: str) -> go.Figure:
     return go.Figure(
         layout=go.Layout(
             title=title,
@@ -682,61 +753,12 @@ def update_output(
         msgs.append(html.Div(f"{msg['sender'] or 'Unknown'}: {text}"))
 
 
-    raw_x = [k for k in summary.keys() if k in selected_patterns]
-    bar_x = [k.replace('_', ' ').title() for k in raw_x]
-    bar_y = [summary[k] for k in raw_x]
-    bar_colors = [
-        "#17BECF",
-        "#FF7F0E",
-        "#2CA02C",
-        "#D62728",
-        "#9467BD",
-        "#8C564B",
-        "#E377C2",
-        "#7F7F7F",
-        "#BCBD22",
-        "#1F77B4",
-        "#9EDAE5",
-        "#FF9896",
-        "#AEC7E8",
-    ]
-
-    # 3) build your y‐values off the raw keys
-#     bar_colors = ["#FADFC9",
-#     "#e8d2b1", 
-#     "#d6c49a", 
-#     "#c5b583",][: len(raw_x)]
-
-    figure = go.Figure(
-        data=[go.Bar(x=bar_x, y=bar_y, marker_color=bar_colors[: len(bar_x)])],
-        layout=go.Layout(
-            title="\U0001F4CA Pattern Breakdown",
-            paper_bgcolor=bg,
-            plot_bgcolor=bg,
-            font=dict(color=text_color),
-            xaxis=dict(title="Pattern Type", color=text_color, gridcolor="#444"),
-            yaxis=dict(title="Count", color=text_color, gridcolor="#444"),
-        ),
-    )
-
-    timeline_fig = go.Figure(
-        data=[
-            go.Scatter(
-                y=results["manipulation_timeline"],
-                mode="lines+markers",
-                line=dict(color="#FADFC9"),
-                hovertemplate="Message %{x} – %{y} manipulation flags",
-                name="Heuristic",
-            )
-        ],
-        layout=go.Layout(
-            title="\U0001F4CA Manipulation Intensity Over Time",
-            paper_bgcolor=bg,
-            plot_bgcolor=bg,
-            font=dict(color=text_color),
-            xaxis=dict(title="Message Index", color=text_color, gridcolor="#444"),
-            yaxis=dict(title="Active Flags", color=text_color, gridcolor="#444"),
-        ),
+    figure = build_pattern_breakdown_figure(summary, selected_patterns, bg, text_color)
+    timeline_fig = build_timeline_figure(
+        results["manipulation_timeline"],
+        None,
+        bg,
+        text_color,
     )
 
     comparison_fig = create_empty_figure("Flag Counts: Heuristic vs LLM", bg, text_color)
@@ -1041,7 +1063,7 @@ def update_output(
 
 
     judge_div = html.Div()
-    summary_text = ""
+    summary_text = "No LLM judge results yet"
     if judge_clicks:
         try:
             log(f"requesting {provider or 'auto'} ...")
@@ -1049,10 +1071,16 @@ def update_output(
             judge_results = judge_conversation_llm(conv, provider=provider or "auto")
             log("received response")
             logger.debug("Judge response parsed")
+        except RuntimeError as exc:  # no API keys
+            log(f"error: {exc}")
+            logger.warning("Judge request failed: %s", exc)
+            judge_div = dbc.Alert(str(exc), color="warning", className="mt-2")
+            summary_text = str(exc)
         except Exception as exc:  # pragma: no cover - network errors etc
             log(f"error: {exc}")
             logger.warning("Judge request failed: %s", exc)
             judge_div = dbc.Alert(str(exc), color="warning", className="mt-2")
+            summary_text = str(exc)
         else:
             if not isinstance(judge_results, dict):
                 msg = "LLM judge results could not be parsed"
@@ -1062,12 +1090,9 @@ def update_output(
                 judge_results = None
             else:
                 merged_for_plots = merge_judge_results(judge_results)
-                if not merged_for_plots.get("flagged"):
-                    judge_div = html.Div(
-                        "No manipulative bot messages detected.",
-                        className="text-muted",
-                    )
-                    summary_text = summarize_judge_results(merged_for_plots)
+                if not judge_results or not merged_for_plots.get("flagged"):
+                    summary_text = "LLM judge returned no results \u2013 check API keys."
+                    judge_div = dbc.Alert(summary_text, color="warning", className="mt-2")
                 else:
                     header = [html.Th("Index"), html.Th("Text")] + [html.Th(f.replace('_', ' ').title()) for f in ALL_FLAG_NAMES]
                     rows = [html.Tr(header)]
@@ -1093,21 +1118,25 @@ def update_output(
                             )
                         )
     elif judge_results is not None:
-        if judge_results and isinstance(judge_results, dict):
-            header = [html.Th("Index"), html.Th("Text")] + [html.Th(f.replace('_', ' ').title()) for f in ALL_FLAG_NAMES]
-            rows = [html.Tr(header)]
-            for item in judge_results.get("flagged", []):
-                row = [html.Td(item.get("index")), html.Td(item.get("text"))]
-                flags = item.get("flags", {})
-                for f in ALL_FLAG_NAMES:
-                    row.append(html.Td(str(flags.get(f, False))))
-                rows.append(html.Tr(row))
-            judge_div = html.Table(rows, className="table table-sm table-dark")
+        if not judge_results:
+            summary_text = "LLM judge returned no results \u2013 check API keys."
+            judge_div = dbc.Alert(summary_text, color="warning", className="mt-2")
+            merged_for_plots = merge_judge_results(judge_results)
         else:
-            judge_div = html.Div("No manipulative bot messages detected.", className="text-muted")
-
-        merged_for_plots = merge_judge_results(judge_results)
-        summary_text = summarize_judge_results(merged_for_plots)
+            if isinstance(judge_results, dict):
+                header = [html.Th("Index"), html.Th("Text")] + [html.Th(f.replace('_', ' ').title()) for f in ALL_FLAG_NAMES]
+                rows = [html.Tr(header)]
+                for item in judge_results.get("flagged", []):
+                    row = [html.Td(item.get("index")), html.Td(item.get("text"))]
+                    flags = item.get("flags", {})
+                    for f in ALL_FLAG_NAMES:
+                        row.append(html.Td(str(flags.get(f, False))))
+                    rows.append(html.Tr(row))
+                judge_div = html.Table(rows, className="table table-sm table-dark")
+            else:
+                judge_div = html.Div("No manipulative bot messages detected.", className="text-muted")
+            merged_for_plots = merge_judge_results(judge_results)
+            summary_text = summarize_judge_results(merged_for_plots)
         judge_timeline = compute_llm_flag_timeline(merged_for_plots, len(results["features"]))
         if any(judge_timeline):
             timeline_fig.add_trace(
