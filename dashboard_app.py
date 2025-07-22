@@ -1,8 +1,10 @@
+from __future__ import annotations
+
 import base64
 import io
 import json
 from datetime import datetime
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Tuple
 import logging
 from logging_utils import setup_logging
 
@@ -79,9 +81,10 @@ ALL_FLAG_NAMES = [
 ]
 
 
-def compute_flag_counts(features: List[Dict[str, Any]], judge_results: Dict[str, Any]) -> (
-    Dict[str, int], Dict[str, int]
-):
+def compute_flag_counts(
+    features: List[Dict[str, Any]],
+    judge_results: Dict[str, Any],
+) -> Tuple[Dict[str, int], Dict[str, int]]:
     """Return heuristic and LLM counts for each flag.
 
     ``judge_results`` is expected to contain a top-level ``"flagged"`` list,
@@ -111,7 +114,7 @@ def build_flag_comparison_figure(
     judge_results: Dict[str, Any],
     bg: str,
     text_color: str,
-) -> "go.Figure":
+) -> go.Figure:
     """Create bar chart comparing heuristic vs LLM flag counts."""
     heur, llm = compute_flag_counts(features, judge_results)
     labels = [f.replace("_", " ").title() for f in ALL_FLAG_NAMES]
@@ -148,7 +151,7 @@ def build_pattern_breakdown_figure(
     selected: List[str],
     bg: str,
     text_color: str,
-) -> "go.Figure":
+) -> go.Figure:
     """Create bar chart for pattern summary."""
     keys = [k for k in selected if k in summary]
     bar_x = [k.replace("_", " ").title() for k in keys]
@@ -173,7 +176,7 @@ def build_timeline_figure(
     judge_timeline: Optional[List[int]],
     bg: str,
     text_color: str,
-) -> "go.Figure":
+) -> go.Figure:
     """Create timeline figure with optional LLM trace."""
     fig = go.Figure(
         data=[
@@ -245,6 +248,18 @@ def build_pattern_breakdown_figure(
             yaxis=dict(title="Count", color=text_color, gridcolor="#444"),
         ),
     )
+    if judge_timeline and any(judge_timeline):
+        fig.add_trace(
+            go.Scatter(
+                x=list(range(len(judge_timeline))),
+                y=judge_timeline,
+                mode="markers",
+                marker=dict(color="#EF553B"),
+                name="LLM Judge",
+                hovertemplate="Message %{x} – %{y} flags (LLM)",
+            )
+        )
+    return fig
 
 
 def build_timeline_figure(
@@ -423,7 +438,7 @@ default_comparison = go.Figure(
 )
 
 
-def create_empty_figure(title: str, bg: str, text_color: str) -> "go.Figure":
+def create_empty_figure(title: str, bg: str, text_color: str) -> go.Figure:
     return go.Figure(
         layout=go.Layout(
             title=title,
@@ -1150,6 +1165,7 @@ def update_output(
             logger.warning("Judge request failed: %s", exc)
             judge_div = dbc.Alert(str(exc), color="warning", className="mt-2")
             judge_results = None
+
             summary_text = str(exc)
         except Exception as exc:  # pragma: no cover - network errors etc
             log(f"error: {exc}")
