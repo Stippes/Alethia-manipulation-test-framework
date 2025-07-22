@@ -320,7 +320,7 @@ def test_update_output_judge_no_results(monkeypatch):
     ]
 
     out = da.update_output("data:,", "raw", 0, 1, "openai", selected, "x.json", True, [], None)
-    assert "Total flagged: 0" in out[20]
+    assert "no results" in out[20].lower()
     judge_div = out[21]
     text = getattr(judge_div, "children", judge_div)
-    assert "no manipulative" in str(text).lower()
+    assert "no results" in str(text).lower()

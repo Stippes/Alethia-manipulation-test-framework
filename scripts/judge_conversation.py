@@ -117,17 +117,22 @@ def judge_conversation_llm(conversation: Dict[str, Any], provider: str = "auto")
         raise ValueError("Conversation must contain fewer than 500 messages")
 
     if provider.lower() == "auto":
+        available = [
+            prov
+            for prov in ["openai", "gemini", "claude", "mistral"]
+            if _API_KEY_ENV.get(prov) and os.getenv(_API_KEY_ENV[prov])
+        ]
+        if not available:
+            raise RuntimeError("No LLM API keys available")
         results: Dict[str, Any] = {}
-        for prov in ["openai", "gemini", "claude", "mistral"]:
-            env_var = _API_KEY_ENV.get(prov, "")
-            if env_var and os.getenv(env_var):
-                logger.info("Calling provider %s", prov)
-                try:
-                    results[prov] = _judge_single(conversation, prov)
-                except Exception:
-                    # skip failing providers
-                    logger.warning("Provider %s failed", prov)
-                    continue
+        for prov in available:
+            logger.info("Calling provider %s", prov)
+            try:
+                results[prov] = _judge_single(conversation, prov)
+            except Exception:
+                # skip failing providers
+                logger.warning("Provider %s failed", prov)
+                continue
         return results
 
     logger.info("Calling single provider %s", provider)
