@@ -9,6 +9,33 @@ from logging_utils import setup_logging, get_llm_logger
 from helpers import extract_json_block
 
 
+def _extract_all_json(text: str) -> list:
+    """Return a list of all JSON objects found in *text*."""
+    if not isinstance(text, str):
+        return []
+    cleaned = text.strip()
+    if cleaned.startswith("```"):
+        cleaned = cleaned.strip("`")
+        if cleaned.lower().startswith("json"):
+            cleaned = cleaned.partition("\n")[2]
+        if cleaned.endswith("```"):
+            cleaned = cleaned.rsplit("```", 1)[0]
+    decoder = json.JSONDecoder()
+    objects = []
+    i = 0
+    while i < len(cleaned):
+        if cleaned[i] in "{[":
+            try:
+                obj, end = decoder.raw_decode(cleaned[i:])
+                objects.append(obj)
+                i += end
+                continue
+            except Exception:
+                pass
+        i += 1
+    return objects
+
+
 from api.api_calls import (
     call_chatgpt,
     call_claude,
@@ -40,6 +67,10 @@ _API_KEY_ENV = {
 
 def _judge_single(conversation: Dict[str, Any], provider: str) -> Dict[str, Any]:
     """Ask an LLM to flag manipulative bot messages in a conversation.
+
+    Multiple JSON objects in the raw response are merged together so that all
+    ``"flagged"`` lists are combined. The entire raw response is logged at
+    debug level before parsing.
 
     Parameters
     ----------
@@ -90,15 +121,26 @@ def _judge_single(conversation: Dict[str, Any], provider: str) -> Dict[str, Any]
         else:
             raise TypeError("Unsupported response type")
 
-        logger.debug("Received response from %s", provider)
+        logger.debug("Raw response object from %s: %r", provider, resp)
+        logger.debug("Raw content from %s: %s", provider, content)
         llm_logger.info("%s: %s", provider, content)
 
-        json_str = extract_json_block(content)
-        if json_str is None:
+        blocks = _extract_all_json(content)
+        if not blocks:
             raise ValueError("no JSON found")
-        return json.loads(json_str)
+
+        combined = {"flagged": []}
+        for obj in blocks:
+            if isinstance(obj, dict) and isinstance(obj.get("flagged"), list):
+                combined["flagged"].extend(obj["flagged"])
+
+        if combined["flagged"]:
+            return combined
+        if len(blocks) == 1 and isinstance(blocks[0], dict):
+            return blocks[0]
+        return combined
     except Exception as exc:
-        logger.warning("Failed to parse response from %s: %s", provider, exc)
+        logger.exception("Failed to parse response from %s", provider)
         return []
 
 
@@ -139,3 +181,15 @@ def judge_conversation_llm(conversation: Dict[str, Any], provider: str = "auto")
 
     logger.info("Calling single provider %s", provider)
     return _judge_single(conversation, provider)
+
+
+# Legacy API wrappers -------------------------------------------------------
+
+def judgeSignal(conversation: Dict[str, Any], provider: str) -> Dict[str, Any]:
+    """Backward compatible wrapper for :func:`_judge_single`."""
+    return _judge_single(conversation, provider)
+
+
+def judgeConversationLN(conversation: Dict[str, Any], provider: str = "auto") -> Dict[str, Any]:
+    """Backward compatible wrapper for :func:`judge_conversation_llm`."""
+    return judge_conversation_llm(conversation, provider)
