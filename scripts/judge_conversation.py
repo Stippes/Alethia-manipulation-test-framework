@@ -117,6 +117,10 @@ def judge_conversation_llm(conversation: Dict[str, Any], provider: str = "auto")
         raise ValueError("Conversation must contain fewer than 500 messages")
 
     if provider.lower() == "auto":
+        if not any(os.getenv(v) for v in _API_KEY_ENV.values()):
+            raise RuntimeError(
+                "No API keys found for automatic provider selection."
+            )
         results: Dict[str, Any] = {}
         for prov in ["openai", "gemini", "claude", "mistral"]:
             env_var = _API_KEY_ENV.get(prov, "")
