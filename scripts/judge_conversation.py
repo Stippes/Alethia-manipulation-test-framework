@@ -123,7 +123,9 @@ def judge_conversation_llm(conversation: Dict[str, Any], provider: str = "auto")
             if _API_KEY_ENV.get(prov) and os.getenv(_API_KEY_ENV[prov])
         ]
         if not available:
-            raise RuntimeError("No LLM API keys available")
+            raise RuntimeError(
+                "No LLM API keys available. Set OPENAI_API_KEY or other provider keys."
+            )
         results: Dict[str, Any] = {}
         for prov in available:
             logger.info("Calling provider %s", prov)
