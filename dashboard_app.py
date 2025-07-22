@@ -20,8 +20,6 @@ try:
     import dash
     from dash import dcc, html
     from dash.dependencies import Input, Output, State
-    import plotly.graph_objs as go
-    import plotly.express as px
     import dash_bootstrap_components as dbc
 except Exception:  # pragma: no cover - make optional for tests
     class _Dummy:
@@ -33,7 +31,6 @@ except Exception:  # pragma: no cover - make optional for tests
 
     dash = _Dummy()
     dcc = html = Input = Output = State = _Dummy()
-    go = _Dummy()
     dbc = _Dummy()
 
 setup_logging()
@@ -107,109 +104,6 @@ def compute_flag_counts(
             if flags.get(f):
                 llm[f] += 1
     return heur, llm
-
-
-def build_flag_comparison_figure(
-    features: List[Dict[str, Any]],
-    judge_results: Dict[str, Any],
-    bg: str,
-    text_color: str,
-):
-    """Create bar chart comparing heuristic vs LLM flag counts."""
-    heur, llm = compute_flag_counts(features, judge_results)
-    labels = [f.replace("_", " ").title() for f in ALL_FLAG_NAMES]
-    fig = go.Figure(
-        data=[
-            go.Bar(
-                name="Heuristic",
-                x=labels,
-                y=[heur[f] for f in ALL_FLAG_NAMES],
-                marker_color="#17BECF",
-            ),
-            go.Bar(
-                name="LLM",
-                x=labels,
-                y=[llm[f] for f in ALL_FLAG_NAMES],
-                marker_color="#EF553B",
-            ),
-        ]
-    )
-    fig.update_layout(
-        title="\U0001F4CA Flag Counts: Heuristic vs LLM",
-        barmode="group",
-        paper_bgcolor=bg,
-        plot_bgcolor=bg,
-        font=dict(color=text_color),
-        xaxis=dict(title="Flag", color=text_color, gridcolor="#444"),
-        yaxis=dict(title="Count", color=text_color, gridcolor="#444"),
-    )
-    return fig
-
-
-def build_pattern_breakdown_figure(
-    summary: Dict[str, int],
-    selected: List[str],
-    bg: str,
-    text_color: str,
-):
-    """Create bar chart for pattern summary."""
-    keys = [k for k in selected if k in summary]
-    bar_x = [k.replace("_", " ").title() for k in keys]
-    bar_y = [summary.get(k, 0) for k in keys]
-    colors = px.colors.qualitative.Dark24
-    fig = go.Figure(
-        data=[go.Bar(x=bar_x, y=bar_y, marker_color=colors[: len(bar_x)])]
-    )
-    fig.update_layout(
-        title="\U0001F4CA Pattern Breakdown",
-        paper_bgcolor=bg,
-        plot_bgcolor=bg,
-        font=dict(color=text_color),
-        xaxis=dict(title="Pattern Type", color=text_color, gridcolor="#444"),
-        yaxis=dict(title="Count", color=text_color, gridcolor="#444"),
-    )
-    return fig
-
-
-def build_timeline_figure(
-    heuristic_timeline: List[int],
-    judge_timeline: Optional[List[int]],
-    bg: str,
-    text_color: str,
-):
-    """Create timeline figure with optional LLM trace."""
-    fig = go.Figure(
-        data=[
-            go.Scatter(
-                x=list(range(len(heuristic_timeline))),
-                y=heuristic_timeline,
-                mode="lines+markers",
-                line=dict(color="#FADFC9"),
-                hovertemplate="Message %{x} – %{y} manipulation flags",
-                name="Heuristic",
-            )
-        ]
-    )
-    fig.update_layout(
-        title="\U0001F4CA Manipulation Intensity Over Time",
-        paper_bgcolor=bg,
-        plot_bgcolor=bg,
-        font=dict(color=text_color),
-        xaxis=dict(title="Message Index", color=text_color, gridcolor="#444"),
-        yaxis=dict(title="Active Flags", color=text_color, gridcolor="#444"),
-    )
-    if judge_timeline and any(judge_timeline):
-        fig.add_trace(
-            go.Scatter(
-                x=list(range(len(judge_timeline))),
-                y=judge_timeline,
-                mode="markers",
-                marker=dict(color="#EF553B"),
-                name="LLM Judge",
-                hovertemplate="Message %{x} – %{y} flags (LLM)",
-            )
-        )
-    return fig
 
 
 
@@ -313,53 +207,6 @@ LIGHT_THEME = dbc.themes.FLATLY
 external_stylesheets = [dbc.icons.FONT_AWESOME, DARK_THEME]
 app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
 app.title = "Alethia Manipulation Transparency Console"
-
-default_figure = go.Figure(
-    data=[go.Bar(x=[], y=[], marker_color="#17BECF")],
-    layout=go.Layout(
-        title="\U0001F4CA Pattern Breakdown",
-        paper_bgcolor="#1a1a1a",
-        plot_bgcolor="#1a1a1a",
-        font=dict(color="white"),
-        xaxis=dict(title="Pattern Type", color="white"),
-        yaxis=dict(title="Count", color="white"),
-    ),
-)
-
-default_timeline = go.Figure(
-    data=[go.Scatter(x=[], y=[])],
-    layout=go.Layout(
-        title="\U0001F4CA Manipulation Intensity Over Time",
-        paper_bgcolor="#1a1a1a",
-        plot_bgcolor="#1a1a1a",
-        font=dict(color="white"),
-        xaxis=dict(title="Message Index", color="white"),
-        yaxis=dict(title="Active Flags", color="white"),
-    ),
-)
-
-default_comparison = go.Figure(
-    data=[go.Bar(x=[], y=[])],
-    layout=go.Layout(
-        title="\U0001F4CA Flag Counts: Heuristic vs LLM",
-        paper_bgcolor="#1a1a1a",
-        plot_bgcolor="#1a1a1a",
-        font=dict(color="white"),
-        xaxis=dict(title="Flag", color="white"),
-        yaxis=dict(title="Count", color="white"),
-    ),
-)
-
-
-def create_empty_figure(title: str, bg: str, text_color: str):
-    return go.Figure(
-        layout=go.Layout(
-            title=title,
-            paper_bgcolor=bg,
-            plot_bgcolor=bg,
-            font=dict(color=text_color),
-        )
-    )
 
 app.layout = html.Div([
     html.Link(id="theme-link", rel="stylesheet", href=DARK_THEME),
@@ -550,9 +397,6 @@ app.layout = html.Div([
                                             "borderRadius": "0.25rem",
                                         },
                                     ),
-                                    dcc.Graph(id="pattern-graph", figure=default_figure, className="mt-4"),
-                                    dcc.Graph(id="manipulation-graph", figure=default_timeline, className="mt-4"),
-                                    dcc.Graph(id="flag-comparison", figure=default_comparison, className="mt-4"),
                                     html.Div(id="most-manipulative", className="mt-3 text-light"),
                                     html.Div(id="llm-judge-results", className="mt-3"),
                                     dbc.Button(
@@ -631,9 +475,6 @@ app.layout = html.Div([
             for flag, _ in NEW_FLAGS
         ],
         Output("conversation-view", "children"),
-        Output("pattern-graph", "figure"),
-        Output("manipulation-graph", "figure"),
-        Output("flag-comparison", "figure"),
         Output("most-manipulative", "children"),
         Output("llm-summary", "children"),
         Output("llm-judge-results", "children"),
@@ -679,9 +520,6 @@ def update_output(
         log_entries.append(f"[{datetime.utcnow().isoformat()}] {msg}")
     judge_results = judge_data
     if contents is None:
-        empty_fig = create_empty_figure("Waiting for upload", bg, text_color)
-        timeline_empty = create_empty_figure("Waiting for upload", bg, text_color)
-        comparison_empty = create_empty_figure("Waiting for upload", bg, text_color)
         return [
             "No file loaded",
             "",
@@ -691,9 +529,6 @@ def update_output(
             "",
             *["" for _ in NEW_FLAGS],
             [html.Div("Upload a conversation to begin", className="text-muted")],
-            empty_fig,
-            timeline_empty,
-            comparison_empty,
             "",
             "",
             html.Div(),
@@ -710,9 +545,6 @@ def update_output(
     except Exception as exc:  # pragma: no cover - unexpected parse/analyze errors
         logger.exception("Failed to process uploaded file: %s", exc)
         log_entries.append(f"[{datetime.utcnow().isoformat()}] error: {exc}")
-        empty_fig = create_empty_figure("Waiting for upload", bg, text_color)
-        timeline_empty = create_empty_figure("Waiting for upload", bg, text_color)
-        comparison_empty = create_empty_figure("Waiting for upload", bg, text_color)
         return [
             f"Error: {exc}",
             "",
@@ -722,9 +554,6 @@ def update_output(
             "",
             *["" for _ in NEW_FLAGS],
             [html.Div("Upload a conversation to begin", className="text-muted")],
-            empty_fig,
-            timeline_empty,
-            comparison_empty,
             "",
             "",
             html.Div(),
@@ -755,15 +584,6 @@ def update_output(
         msgs.append(html.Div(f"{msg['sender'] or 'Unknown'}: {text}"))
 
 
-    figure = build_pattern_breakdown_figure(summary, selected_patterns, bg, text_color)
-    timeline_fig = build_timeline_figure(
-        results["manipulation_timeline"],
-        None,
-        bg,
-        text_color,
-    )
-
-    comparison_fig = create_empty_figure("Flag Counts: Heuristic vs LLM", bg, text_color)
 
     most_msg = results["most_manipulative"]
     if most_msg:
@@ -1111,17 +931,6 @@ def update_output(
                     log("processed results")
                     logger.debug("Merged judge results for plotting")
                     summary_text = summarize_judge_results(merged_for_plots)
-                    judge_timeline = compute_llm_flag_timeline(merged_for_plots, len(results["features"]))
-                    if any(judge_timeline):
-                        timeline_fig.add_trace(
-                            go.Scatter(
-                                y=judge_timeline,
-                                mode="markers",
-                                marker=dict(color="#EF553B"),
-                                name="LLM Judge",
-                                hovertemplate="Message %{x} – %{y} flags (LLM)",
-                            )
-                        )
     elif judge_results is not None:
         if not judge_results:
             summary_text = "LLM judge returned no results \u2013 check API keys."
@@ -1142,25 +951,10 @@ def update_output(
                 judge_div = html.Div("No manipulative bot messages detected.", className="text-muted")
             merged_for_plots = merge_judge_results(judge_results)
             summary_text = summarize_judge_results(merged_for_plots)
-        judge_timeline = compute_llm_flag_timeline(merged_for_plots, len(results["features"]))
-        if any(judge_timeline):
-            timeline_fig.add_trace(
-                go.Scatter(
-                    y=judge_timeline,
-                    mode="markers",
-                    marker=dict(color="#EF553B"),
-                    name="LLM Judge",
-                    hovertemplate="Message %{x} – %{y} flags (LLM)",
-                )
-            )
     if judge_results is not None:
         merged_for_plots = merge_judge_results(judge_results)
-        comparison_fig = build_flag_comparison_figure(
-            results["features"], merged_for_plots, bg, text_color
-        )
-    else:
-        comparison_fig = create_empty_figure("Flag Counts: Heuristic vs LLM", bg, text_color)
-
+        summary_text = summarize_judge_results(merged_for_plots)
+    
     download_data = None
     if download_clicks:
         payload = {"conversation": conv, "analysis": results}
@@ -1190,9 +984,6 @@ def update_output(
             for flag, label in NEW_FLAGS
         ],
         msgs,
-        figure,
-        timeline_fig,
-        comparison_fig,
         most_msg_div,
         summary_text,
         judge_div,
