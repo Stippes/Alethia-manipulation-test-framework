@@ -260,3 +260,13 @@ def test_judge_conversation_with_object_response(monkeypatch):
     conv = {"conversation_id": "obj", "messages": [{"sender": "bot", "timestamp": None, "text": "hello"}]}
     result = judge_conversation_llm(conv, provider="openai")
     assert result == {"flagged": []}
+
+
+def test_judge_conversation_auto_no_keys(monkeypatch):
+    conv = {"conversation_id": "n", "messages": [{"sender": "bot", "timestamp": None, "text": "x"}]}
+
+    for env in ["OPENAI_API_KEY", "GEMINI_API_KEY", "CLAUDE_API_KEY", "MISTRAL_API_KEY"]:
+        monkeypatch.delenv(env, raising=False)
+
+    with pytest.raises(RuntimeError):
+        judge_conversation_llm(conv, provider="auto")
