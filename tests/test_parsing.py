@@ -1,0 +1,36 @@
+import json
+import base64
+import os
+import sys
+from pathlib import Path
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+import dashboard_app as da
+
+
+def test_parse_uploaded_file_json():
+    data = {"messages": [{"sender": "user", "timestamp": None, "text": "hello"}]}
+    enc = base64.b64encode(json.dumps(data).encode()).decode()
+    contents = f"data:application/json;base64,{enc}"
+    result = da.parse_uploaded_file(contents, "sample.json")
+    assert result["conversation_id"] == "sample"
+    assert result["messages"][0]["text"] == "hello"
+
+
+def test_parse_uploaded_file_txt():
+    text = "[10:00:00] User: hi\n[10:00:01] Bot: hello"
+    enc = base64.b64encode(text.encode()).decode()
+    contents = f"data:text/plain;base64,{enc}"
+    result = da.parse_uploaded_file(contents, "chat.txt")
+    assert result["conversation_id"] == "chat"
+    assert result["messages"][0]["sender"].lower() == "user"
+    assert result["messages"][1]["text"] == "hello"
+
+
+def test_parse_uploaded_file_csv():
+    csv_text = "sender,text\nuser,hi\nbot,hello"
+    enc = base64.b64encode(csv_text.encode()).decode()
+    contents = f"data:text/csv;base64,{enc}"
+    result = da.parse_uploaded_file(contents, "log.csv")
+    assert len(result["messages"]) == 2
+    assert result["messages"][1]["text"] == "hello"
