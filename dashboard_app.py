@@ -217,9 +217,11 @@ def analyze_conversation(conv: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def summarize_judge_results(judge_results: Dict[str, Any]) -> str:
-    if not isinstance(judge_results, dict):
-        return ""
-    flagged = judge_results.get("flagged", [])
+    """Return a short summary of LLM judge results."""
+    if not isinstance(judge_results, dict) or not judge_results:
+        flagged = []
+    else:
+        flagged = judge_results.get("flagged") or []
     counts = {f: 0 for f in ALL_FLAG_NAMES}
     for item in flagged:
         for f in ALL_FLAG_NAMES:
@@ -1061,11 +1063,11 @@ def update_output(
             else:
                 merged_for_plots = merge_judge_results(judge_results)
                 if not merged_for_plots.get("flagged"):
-                    msg = "LLM judge returned no results – check API keys."
-                    log(msg)
-                    judge_div = dbc.Alert(msg, color="warning", className="mt-2")
-                    summary_text = msg
-                    judge_results = None
+                    judge_div = html.Div(
+                        "No manipulative bot messages detected.",
+                        className="text-muted",
+                    )
+                    summary_text = summarize_judge_results(merged_for_plots)
                 else:
                     header = [html.Th("Index"), html.Th("Text")] + [html.Th(f.replace('_', ' ').title()) for f in ALL_FLAG_NAMES]
                     rows = [html.Tr(header)]

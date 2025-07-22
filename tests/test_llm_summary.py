@@ -16,6 +16,11 @@ def test_summarize_judge_results():
     assert "Flattery: 1" in text
 
 
+def test_summarize_judge_results_empty():
+    assert da.summarize_judge_results({}) == "Total flagged: 0"
+    assert da.summarize_judge_results(None) == "Total flagged: 0"
+
+
 def test_judge_timeline_trace():
     features = [
         {"index": 0, "sender": "bot", "timestamp": None, "text": "buy", "flags": {"urgency": True}},
