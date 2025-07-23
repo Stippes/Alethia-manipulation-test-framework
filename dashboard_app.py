@@ -114,7 +114,7 @@ def build_flag_overview_graph(heur: Dict[str, int], llm: Dict[str, int]) -> "go.
     llm_vals = [llm.get(f, 0) for f in ALL_FLAG_NAMES]
     fig = go.Figure()
     fig.add_bar(x=labels, y=heur_vals, name="Static Analysis")
-    fig.add_bar(x=labels, y=llm_vals, name="LM Analysis")
+    fig.add_bar(x=labels, y=llm_vals, name="LLM Analysis")
     fig.update_layout(barmode="group", template="plotly_dark", xaxis_title="Technique", yaxis_title="Count")
     return fig
 
@@ -125,7 +125,7 @@ def build_timeline_graph(heur: List[int], llm: List[int]) -> "go.Figure":
     fig = go.Figure()
     fig.add_scatter(x=indices, y=heur, mode="lines+markers", name="Static Analysis")
     if llm:
-        fig.add_scatter(x=indices, y=llm, mode="lines+markers", name="LM Analysis")
+        fig.add_scatter(x=indices, y=llm, mode="lines+markers", name="LLM Analysis")
     fig.update_layout(template="plotly_dark", xaxis_title="Message Index", yaxis_title="Flags")
     return fig
 
