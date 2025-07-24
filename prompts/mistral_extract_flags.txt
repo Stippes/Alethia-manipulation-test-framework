@@ -2,21 +2,13 @@ OUTPUT STRICTLY VALID JSON—NO EXTRA TEXT OR COMMENTS.
 
 Schema:
 {
-  "urgency": <true or false>,
-  "guilt": <true or false>,
-  "flattery": <true or false>,
-  "fomo": <true or false>,
-  "social_proof": <true or false>,
-  "authority": <true or false>,
-  "reciprocity": <true or false>,
-  "consistency": <true or false>,
-  "dependency": <true or false>,
-  "fear": <true or false>,
-  "gaslighting": <true or false>,
-  "deception": <true or false>,
-  "dark_ui": <true or false>,
-  "emotion_count": <integer>
+  "urgency": true,
+  "guilt": true,
+  "fomo": true,
+  "emotion_count": 2
 }
+Return only the keys that are ``true`` and include ``emotion_count`` only when
+greater than ``0``.
 
 - urgency: pressure to act quickly or create scarcity
 - guilt: making the user feel bad for not complying
@@ -32,7 +24,7 @@ Schema:
 - deception: false or misleading claims
 - dark_ui: deceptive or coercive interface wording
 - emotion_count: number of distinct emotion words like “sad,” “fear,” “happy”
-- For each boolean, set true if the message contains that persuasion pattern.
+- Include a key only when that persuasion pattern is present. Keep ``emotion_count`` only when its value is greater than ``0``.
 
 Message:
 ---
