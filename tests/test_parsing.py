@@ -28,6 +28,17 @@ def test_parse_uploaded_file_txt():
     assert result["messages"][1]["text"] == "hello"
 
 
+def test_parse_uploaded_file_txt_no_timestamp():
+    text = "User: hi\nBot: hello"
+    enc = base64.b64encode(text.encode()).decode()
+    contents = f"data:text/plain;base64,{enc}"
+    result = da.parse_uploaded_file(contents, "chat.txt")
+    assert result["conversation_id"] == "chat"
+    assert result["messages"][0]["sender"].lower() == "user"
+    assert result["messages"][0]["timestamp"] is None
+    assert result["messages"][1]["sender"].lower() == "bot"
+
+
 def test_parse_uploaded_file_csv():
     csv_text = "sender,text\nuser,hi\nbot,hello"
     enc = base64.b64encode(csv_text.encode()).decode()

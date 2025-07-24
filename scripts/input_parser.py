@@ -85,6 +85,8 @@ def parse_txt_chat(txt_path: str) -> Dict[str, Any]:
     pattern2 = re.compile(
         r"^(?P<sender>[^\(]+)\s*\((?P<timestamp>\d{4}-\d{2}-\d{2}\s+\d{1,2}:\d{2}:\d{2})\):\s*(?P<text>.+)"
     )
+    # Pattern 3: Sender: text (no timestamp)
+    pattern3 = re.compile(r'^(?P<sender>[^:]+):\s*(?P<text>.+)$')
 
     with path.open('r', encoding='utf-8') as f:
         for line in f:
@@ -94,6 +96,7 @@ def parse_txt_chat(txt_path: str) -> Dict[str, Any]:
 
             match1 = pattern1.match(line)
             match2 = pattern2.match(line)
+            match3 = pattern3.match(line)
 
             if match1:
                 raw_ts = match1.group('timestamp')
@@ -117,6 +120,10 @@ def parse_txt_chat(txt_path: str) -> Dict[str, Any]:
                     timestamp = None
                 sender = match2.group('sender').strip()
                 text = match2.group('text').strip()
+            elif match3:
+                timestamp = None
+                sender = match3.group('sender').strip()
+                text = match3.group('text').strip()
             else:
                 # Fallback: no clear timestamp/sender
                 timestamp = None
