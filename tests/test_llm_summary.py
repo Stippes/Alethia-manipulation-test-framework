@@ -1,4 +1,6 @@
 import json, base64
+import os
+os.environ["DEBUG_MODE"] = "1"
 import dashboard_app as da
 from scripts.judge_utils import merge_judge_results
 
