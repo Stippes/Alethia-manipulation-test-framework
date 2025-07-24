@@ -1143,6 +1143,7 @@ if DEBUG_MODE:
     def display_debug(logs):
         return "\n".join(logs or [])
 
+server = app.server
 
 if __name__ == "__main__":
     import argparse
