@@ -135,7 +135,7 @@ This section walks through a full workflow from setting up the project to analys
 
 9. **Launch the interactive dashboard**
 
-   Start the Dash application with `python dashboard_app.py` and open `http://127.0.0.1:8050` in your browser. Upload a conversation file to explore detected manipulation patterns and download the analysis as JSON. Use the *Conversation Type* dropdown to choose between **Chatbot** (default) and **Social Media** modes. Chatbot mode normalizes senders into `user` and `bot`, while Social Media mode preserves all distinct names.
+   Make sure you've installed all dependencies with `pip install -r requirements.txt` before starting the dashboard. Then run `python dashboard_app.py` and open `http://127.0.0.1:8050` in your browser. Upload a conversation file to explore detected manipulation patterns and download the analysis as JSON. Use the *Conversation Type* dropdown to choose between **Chatbot** (default) and **Social Media** modes. Chatbot mode normalizes senders into `user` and `bot`, while Social Media mode preserves all distinct names.
 
 ### Deploying to Heroku
 
