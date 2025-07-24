@@ -88,6 +88,11 @@ This section walks through a full workflow from setting up the project to analys
 
    If you used a `.txt` log, call `parse_txt_chat` instead of `parse_json_chat`.
 
+   The dashboard helper `parse_uploaded_file` performs the same parsing and
+   accepts an optional `conv_type` argument. Set ``conv_type="chatbot"`` to
+   normalise senders to ``user``/``bot`` or ``"social"`` to keep the original
+   names.
+
 5. **Extract manipulation features**
 
    ```python
@@ -130,7 +135,7 @@ This section walks through a full workflow from setting up the project to analys
 
 9. **Launch the interactive dashboard**
 
-   Start the Dash application with `python dashboard_app.py` and open `http://127.0.0.1:8050` in your browser. Upload a conversation file to explore detected manipulation patterns and download the analysis as JSON.
+   Start the Dash application with `python dashboard_app.py` and open `http://127.0.0.1:8050` in your browser. Upload a conversation file to explore detected manipulation patterns and download the analysis as JSON. Use the *Conversation Type* dropdown to choose between **Chatbot** (default) and **Social Media** modes. Chatbot mode normalizes senders into `user` and `bot`, while Social Media mode preserves all distinct names.
 
 ### Deploying to Heroku
 

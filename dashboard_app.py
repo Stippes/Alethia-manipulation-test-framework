@@ -141,7 +141,19 @@ def empty_figure() -> "go.Figure":
 
 
 
-def parse_uploaded_file(contents: str, filename: str) -> Dict[str, Any]:
+def parse_uploaded_file(contents: str, filename: str, conv_type: str = "chatbot") -> Dict[str, Any]:
+    """Parse an uploaded conversation file.
+
+    Args:
+        contents: Base64 encoded file contents from the Dash upload component.
+        filename: Original filename provided by the browser.
+        conv_type: Either ``"chatbot"`` or ``"social"``. In chatbot mode sender
+            names are normalised to ``"user"`` and ``"bot"``. Social mode keeps
+            the original names.
+
+    Returns:
+        A conversation dictionary in standard format.
+    """
     logger.debug("Parsing uploaded file %s", filename)
     content_type, content_string = contents.split(',')
     decoded = base64.b64decode(content_string)
@@ -188,7 +200,35 @@ def parse_uploaded_file(contents: str, filename: str) -> Dict[str, Any]:
         conversation = {'conversation_id': filename.rsplit('.', 1)[0], 'messages': msgs}
     else:
         conversation = {'conversation_id': filename.rsplit('.', 1)[0], 'messages': []}
-    return input_parser.standardize_format(conversation)
+
+    conv = input_parser.standardize_format(conversation)
+
+    if conv_type == "chatbot":
+        user_aliases = {"user", "human", "customer", "me", "you"}
+        bot_aliases = {"bot", "assistant", "gpt", "model", "ai", "system"}
+        seen_user = None
+        seen_bot = None
+        for msg in conv.get("messages", []):
+            sender = msg.get("sender")
+            if sender is None:
+                continue
+            low = sender.lower()
+            if low in user_aliases:
+                msg["sender"] = "user"
+                seen_user = "user"
+            elif low in bot_aliases:
+                msg["sender"] = "bot"
+                seen_bot = "bot"
+            elif seen_user is None:
+                msg["sender"] = "user"
+                seen_user = sender
+            elif low == str(seen_user).lower():
+                msg["sender"] = "user"
+            else:
+                msg["sender"] = "bot"
+                seen_bot = sender
+
+    return conv
 
 
 def analyze_conversation(conv: Dict[str, Any]) -> Dict[str, Any]:
@@ -558,6 +598,7 @@ app.layout = html.Div([
         Input("llm-judge-btn", "n_clicks"),
         Input("llm-provider", "value"),
         Input("pattern-filter", "value"),
+        Input("conv-type", "value"),
     ],
     [
         State("upload-data", "filename"),
@@ -574,6 +615,7 @@ def update_output(
     judge_clicks,
     provider,
     selected_patterns,
+    conv_type,
     filename,
     light_on,
     debug_log,
@@ -610,7 +652,7 @@ def update_output(
         ]
 
     try:
-        conv = parse_uploaded_file(contents, filename)
+        conv = parse_uploaded_file(contents, filename, conv_type)
         results = analyze_conversation(conv)
     except Exception as exc:  # pragma: no cover - unexpected parse/analyze errors
         logger.exception("Failed to process uploaded file: %s", exc)
