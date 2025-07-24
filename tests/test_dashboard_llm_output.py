@@ -84,7 +84,7 @@ def test_update_output_callback(monkeypatch):
             {"index": 0, "text": "Buy now!", "flags": {"urgency": True}}
         ]
     }
-    monkeypatch.setattr(da, "parse_uploaded_file", lambda c, f: conv)
+    monkeypatch.setattr(da, "parse_uploaded_file", lambda c, f, conv_type="chatbot": conv)
     monkeypatch.setattr(da, "analyze_conversation", lambda c: analysis)
     monkeypatch.setattr(da, "judge_conversation_llm", lambda c, provider="auto": fake_results)
 
@@ -95,6 +95,7 @@ def test_update_output_callback(monkeypatch):
         1,
         "openai",
         [],
+        "chatbot",
         "conv.json",
         False,
         [],
@@ -118,6 +119,7 @@ def test_update_output_no_file_has_dark_theme():
         0,
         "openai",
         [],
+        "chatbot",
         "foo",
         False,
         [],
