@@ -99,5 +99,5 @@ def test_update_output_callback(monkeypatch):
         [],
         None,
     )
-    assert outputs[23] == fake_results
-    assert any("processed results" in entry for entry in outputs[22])
+    assert outputs[25] == fake_results
+    assert any("processed results" in entry for entry in outputs[24])
