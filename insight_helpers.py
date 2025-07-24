@@ -1,5 +1,33 @@
 from typing import List, Dict, Any
 
+
+def standardize_sender(sender: Any) -> str:
+    """Map various sender labels to canonical ``"user"`` or ``"bot"``.
+
+    Parameters
+    ----------
+    sender : Any
+        Raw sender value from a conversation message. ``None`` or unrecognised
+        names are treated as ``"user"``.
+
+    Returns
+    -------
+    str
+        ``"bot"`` if the sender represents the assistant/system, otherwise
+        ``"user"``.
+    """
+
+    if sender is None:
+        raw = ""
+    else:
+        raw = str(sender).strip().lower()
+
+    if raw in {"bot", "assistant", "sammy", "system"}:
+        return "bot"
+    if raw == "user":
+        return "user"
+    return "user"
+
 def compute_manipulation_ratio(features: List[Dict[str, Any]]) -> float:
     total = len(features)
     if total == 0:
@@ -70,7 +98,7 @@ def compute_dominance_metrics(features: List[Dict[str, Any]]) -> Dict[str, Any]:
     for f in features:
         text = f.get('text', '') or ''
         wc = len(text.split())
-        sender = (f.get('sender') or '').lower()
+        sender = standardize_sender(f.get('sender'))
         if sender == 'user':
             user_msg_count += 1
             user_words += wc
