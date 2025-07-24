@@ -1,20 +1,11 @@
 You are an expert at identifying persuasive/manipulative language.
-Analyze the following single message and return JSON with these keys:
+Analyze the following single message and return JSON containing **only** the
+keys that apply. Omit any flag set to ``false``. Include ``emotion_count`` only
+when it is greater than ``0``. Example:
   {
-    "urgency": <true or false>,
-    "guilt": <true or false>,
-    "flattery": <true or false>,
-    "fomo": <true or false>,
-    "social_proof": <true or false>,
-    "authority": <true or false>,
-    "reciprocity": <true or false>,
-    "consistency": <true or false>,
-    "dependency": <true or false>,
-    "fear": <true or false>,
-    "gaslighting": <true or false>,
-    "deception": <true or false>,
-    "dark_ui": <true or false>,
-    "emotion_count": <integer>
+    "urgency": true,
+    "deception": true,
+    "emotion_count": 1
   }
 
 - urgency: pressure to act quickly or create scarcity
@@ -31,7 +22,7 @@ Analyze the following single message and return JSON with these keys:
 - deception: false or misleading claims
 - dark_ui: deceptive or coercive interface wording
 - emotion_count: number of distinct emotion words
-- Set each boolean to true if its category is present. Do NOT output anything except the JSON object.
+- Include a flag key only when it applies and keep ``emotion_count`` only when its value is greater than ``0``. Do NOT output anything except the JSON object.
 
 Message:
 """

@@ -1,20 +1,13 @@
 You are an AI that identifies manipulation cues in text.
 Follow these rules:
-1. Output a JSON object with exactly these keys:
-   - "urgency": boolean
-   - "guilt": boolean
-   - "flattery": boolean
-   - "fomo": boolean
-   - "social_proof": boolean
-   - "authority": boolean
-   - "reciprocity": boolean
-   - "consistency": boolean
-   - "dependency": boolean
-   - "fear": boolean
-   - "gaslighting": boolean
-   - "deception": boolean
-   - "dark_ui": boolean
-   - "emotion_count": integer
+1. Output a JSON object containing **only** the keys that apply. Omit any flag
+   whose value would be ``false`` and include ``emotion_count`` only when it is
+   greater than ``0``. Example:
+   {
+     "urgency": true,
+     "fear": true,
+     "emotion_count": 3
+   }
 2. Category definitions:
    - urgency: pressure to act quickly or create scarcity
    - guilt: making the user feel bad for not complying
@@ -30,7 +23,7 @@ Follow these rules:
    - deception: false or misleading claims
    - dark_ui: deceptive or coercive interface wording
    - emotion_count: number of distinct emotion words (e.g., sad, angry, happy)
-3. Do not output any explanation, only the JSON object. Set each boolean true if its category is present.
+3. Do not output any explanation, only the JSON object. Include a key only when its category is present.
 
 Evaluate this message:
 -----------
