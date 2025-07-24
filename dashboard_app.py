@@ -18,6 +18,7 @@ from insight_helpers import (
     compute_llm_flag_timeline,
 )
 
+_Dummy = None
 try:
     import dash
     from dash import dcc, html
@@ -38,6 +39,10 @@ except Exception:  # pragma: no cover - make optional for tests
 
 setup_logging()
 logger = logging.getLogger(__name__)
+if _Dummy is not None and isinstance(dash, _Dummy):
+    logger.warning(
+        "Dash is unavailable; dashboard functionality will be disabled"
+    )
 
 DEBUG_MODE = os.getenv("DEBUG_MODE") == "1"
 
