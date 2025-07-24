@@ -131,3 +131,22 @@ This section walks through a full workflow from setting up the project to analys
 9. **Launch the interactive dashboard**
 
    Start the Dash application with `python dashboard_app.py` and open `http://127.0.0.1:8050` in your browser. Upload a conversation file to explore detected manipulation patterns and download the analysis as JSON.
+
+### Deploying to Heroku
+
+1. [Install the Heroku CLI](https://devcenter.heroku.com/articles/heroku-cli) and log in with `heroku login`.
+2. Create an app and configure your API keys:
+
+   ```bash
+   heroku create my-manipulation-dashboard
+   heroku config:set OPENAI_API_KEY=... GEMINI_API_KEY=... CLAUDE_API_KEY=...
+   ```
+
+3. Push the code and scale a web dyno:
+
+   ```bash
+   git push heroku main
+   heroku ps:scale web=1
+   ```
+
+The dashboard will be available at the URL shown by the `heroku create` command.
