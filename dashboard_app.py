@@ -423,6 +423,24 @@ app.layout = html.Div([
                                         },
                                     ),
                                     html.Div(id="most-manipulative", className="mt-3 text-light"),
+                                    dbc.Card(
+                                        [
+                                            dbc.CardHeader("Manipulation Techniques Overview"),
+                                            dbc.CardBody(
+                                                dcc.Graph(id="flag-count-graph")
+                                            ),
+                                        ],
+                                        className="mt-3 shadow-sm",
+                                    ),
+                                    dbc.Card(
+                                        [
+                                            dbc.CardHeader("Manipulation Timeline"),
+                                            dbc.CardBody(
+                                                dcc.Graph(id="timeline-graph")
+                                            ),
+                                        ],
+                                        className="mb-3 shadow-sm",
+                                    ),
                                     html.Div(id="llm-judge-results", className="mt-3"),
                                     dbc.Button(
                                         "Download JSON Report",
@@ -436,24 +454,6 @@ app.layout = html.Div([
                             ),
                         ],
                         className="mb-4 h-100 shadow-sm",
-                    ),
-                    dbc.Card(
-                        [
-                            dbc.CardHeader("Manipulation Techniques Overview"),
-                            dbc.CardBody(
-                                dcc.Graph(id="flag-count-graph")
-                            ),
-                        ],
-                        className="mb-4 shadow-sm",
-                    ),
-                    dbc.Card(
-                        [
-                            dbc.CardHeader("Manipulation Timeline"),
-                            dbc.CardBody(
-                                dcc.Graph(id="timeline-graph")
-                            ),
-                        ],
-                        className="mb-4 shadow-sm",
                     ),
                     ],
                     width=6,
@@ -520,6 +520,8 @@ app.layout = html.Div([
         ],
         Output("conversation-view", "children"),
         Output("most-manipulative", "children"),
+        Output("flag-count-graph", "figure"),
+        Output("timeline-graph", "figure"),
         Output("llm-summary", "children"),
         Output("llm-judge-results", "children"),
         Output("dominance-table", "children"),
@@ -527,8 +529,6 @@ app.layout = html.Div([
         Output("download-json", "data"),
         Output("llm-debug", "data"),
         Output("judge-store", "data"),
-        Output("flag-count-graph", "figure"),
-        Output("timeline-graph", "figure"),
     ],
     [
         Input("upload-data", "contents"),
@@ -1038,6 +1038,8 @@ def update_output(
         ],
         msgs,
         most_msg_div,
+        build_flag_overview_graph(heur_counts, llm_counts),
+        build_timeline_graph(timeline, llm_timeline),
         summary_text,
         judge_div,
         dominance_table,
@@ -1045,8 +1047,6 @@ def update_output(
         download_data,
         log_entries,
         judge_results,
-        build_flag_overview_graph(heur_counts, llm_counts),
-        build_timeline_graph(timeline, llm_timeline),
     )
 
 
