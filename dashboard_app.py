@@ -3,6 +3,7 @@ from __future__ import annotations
 import base64
 import io
 import json
+import os
 from datetime import datetime
 from typing import Dict, Any, List, Optional, Tuple
 import logging
@@ -36,6 +37,8 @@ except Exception:  # pragma: no cover - make optional for tests
 
 setup_logging()
 logger = logging.getLogger(__name__)
+
+DEBUG_MODE = os.getenv("DEBUG_MODE") == "1"
 
 
 # pick one of the Bootswatch themes below:
@@ -449,7 +452,13 @@ app.layout = html.Div([
                                         className="mt-3",
                                     ),
                                     dcc.Download(id="download-json"),
-                                    html.Pre(id="debug-output", className="mt-3 text-light", style={"whiteSpace": "pre-wrap"}),
+                                    *([
+                                        html.Pre(
+                                            id="debug-output",
+                                            className="mt-3 text-light",
+                                            style={"whiteSpace": "pre-wrap"},
+                                        )
+                                    ] if DEBUG_MODE else []),
                                 ]
                             ),
                         ],
@@ -560,10 +569,11 @@ def update_output(
 ):
     bg = "#ffffff" if light_on else "#1a1a1a"
     text_color = "black" if light_on else "white"
-    log_entries = list(debug_log or [])
+    log_entries = list(debug_log or []) if DEBUG_MODE else []
     def log(msg):
         logger.info(msg)
-        log_entries.append(f"[{datetime.utcnow().isoformat()}] {msg}")
+        if DEBUG_MODE:
+            log_entries.append(f"[{datetime.utcnow().isoformat()}] {msg}")
     judge_results = judge_data
     if contents is None:
         return [
@@ -581,7 +591,7 @@ def update_output(
             "",
             "",
             None,
-            debug_log,
+            log_entries if DEBUG_MODE else debug_log,
             None,
             go.Figure(),
             go.Figure(),
@@ -592,7 +602,8 @@ def update_output(
         results = analyze_conversation(conv)
     except Exception as exc:  # pragma: no cover - unexpected parse/analyze errors
         logger.exception("Failed to process uploaded file: %s", exc)
-        log_entries.append(f"[{datetime.utcnow().isoformat()}] error: {exc}")
+        if DEBUG_MODE:
+            log_entries.append(f"[{datetime.utcnow().isoformat()}] error: {exc}")
         return [
             f"Error: {exc}",
             "",
@@ -608,7 +619,7 @@ def update_output(
             "",
             "",
             None,
-            log_entries,
+            log_entries if DEBUG_MODE else debug_log,
             None,
             go.Figure(),
             go.Figure(),
@@ -1045,7 +1056,7 @@ def update_output(
         dominance_table,
         explanations,
         download_data,
-        log_entries,
+        log_entries if DEBUG_MODE else debug_log,
         judge_results,
     )
 
@@ -1055,11 +1066,21 @@ def toggle_theme(light_on: bool):
     return LIGHT_THEME if light_on else DARK_THEME
 
 
-@app.callback(Output("debug-output", "children"), Input("llm-debug", "data"))
-def display_debug(logs):
-    return "\n".join(logs or [])
+if DEBUG_MODE:
+    @app.callback(Output("debug-output", "children"), Input("llm-debug", "data"))
+    def display_debug(logs):
+        return "\n".join(logs or [])
 
 
 if __name__ == "__main__":
+    import argparse
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--debug", action="store_true", help="enable debug mode")
+    args = parser.parse_args()
+    if args.debug:
+        DEBUG_MODE = True
+        os.environ["DEBUG_MODE"] = "1"
+
     setup_logging()
     app.run(debug=False)
