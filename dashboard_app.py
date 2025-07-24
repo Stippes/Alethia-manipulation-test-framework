@@ -3,6 +3,7 @@ from __future__ import annotations
 import base64
 import io
 import json
+import os
 from datetime import datetime
 from typing import Dict, Any, List, Optional, Tuple
 import logging
@@ -231,6 +232,7 @@ LIGHT_THEME = dbc.themes.FLATLY
 external_stylesheets = [dbc.icons.FONT_AWESOME, DARK_THEME]
 app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
 app.title = "Alethia Manipulation Transparency Console"
+server = app.server
 
 app.layout = html.Div([
     html.Link(id="theme-link", rel="stylesheet", href=DARK_THEME),
@@ -1062,4 +1064,4 @@ def display_debug(logs):
 
 if __name__ == "__main__":
     setup_logging()
-    app.run(debug=False)
+    app.run_server(host="0.0.0.0", port=int(os.getenv("PORT", 8050)), debug=False)
