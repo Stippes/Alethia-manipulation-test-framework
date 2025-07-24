@@ -27,6 +27,12 @@ try:
 except Exception:  # pragma: no cover - make optional for tests
     class _Dummy:
         def __getattr__(self, name):
+            if name == "callback":
+                def decorator_factory(*args, **kwargs):
+                    def decorator(func):
+                        return func
+                    return decorator
+                return decorator_factory
             return self
 
         def __call__(self, *args, **kwargs):
@@ -35,6 +41,7 @@ except Exception:  # pragma: no cover - make optional for tests
     dash = _Dummy()
     dcc = html = Input = Output = State = _Dummy()
     dbc = _Dummy()
+    go = _Dummy()
 
 setup_logging()
 logger = logging.getLogger(__name__)
