@@ -4,8 +4,9 @@ import base64
 import io
 import json
 import os
+import re
 from datetime import datetime
-from typing import Dict, Any, List, Optional, Tuple
+from typing import Dict, Any, List, Tuple
 import logging
 from logging_utils import setup_logging
 
@@ -151,6 +152,7 @@ def parse_uploaded_file(contents: str, filename: str) -> Dict[str, Any]:
         data = decoded.decode('utf-8')
         lines = data.splitlines()
         msgs = []
+        pattern3 = re.compile(r'^(?P<sender>[^:]+):\s*(?P<text>.+)$')
         for line in lines:
             if not line.strip():
                 continue
@@ -163,7 +165,11 @@ def parse_uploaded_file(contents: str, filename: str) -> Dict[str, Any]:
                     continue
                 except Exception:
                     pass
-            msgs.append({'sender': None, 'timestamp': None, 'text': line})
+            match3 = pattern3.match(line)
+            if match3:
+                msgs.append({'sender': match3.group('sender').strip(), 'timestamp': None, 'text': match3.group('text').strip()})
+            else:
+                msgs.append({'sender': None, 'timestamp': None, 'text': line})
         conversation = {'conversation_id': filename.rsplit('.', 1)[0], 'messages': msgs}
     elif name.endswith('.csv'):
         data = decoded.decode('utf-8')
