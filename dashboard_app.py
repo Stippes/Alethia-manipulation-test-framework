@@ -981,13 +981,16 @@ def update_output(
                     summary_text = "LLM judge returned no results \u2013 check API keys."
                     judge_div = dbc.Alert(summary_text, color="warning", className="mt-2")
                 else:
-                    header = [html.Th("Index"), html.Th("Text")] + [html.Th(f.replace('_', ' ').title()) for f in ALL_FLAG_NAMES]
+                    header = [html.Th("Index"), html.Th("Text"), html.Th("Flags")]
                     rows = [html.Tr(header)]
                     for item in merged_for_plots.get("flagged", []):
-                        row = [html.Td(item.get("index")), html.Td(item.get("text"))]
                         flags = item.get("flags", {})
-                        for f in ALL_FLAG_NAMES:
-                            row.append(html.Td(str(flags.get(f, False))))
+                        true_flags = [name.replace('_', ' ').title() for name, val in flags.items() if val]
+                        row = [
+                            html.Td(item.get("index")),
+                            html.Td(item.get("text")),
+                            html.Td(", ".join(true_flags)),
+                        ]
                         rows.append(html.Tr(row))
                     judge_div = html.Table(rows, className="table table-sm table-dark")
                     log("processed results")
@@ -1000,13 +1003,16 @@ def update_output(
             merged_for_plots = merge_judge_results(judge_results)
         else:
             if isinstance(judge_results, dict):
-                header = [html.Th("Index"), html.Th("Text")] + [html.Th(f.replace('_', ' ').title()) for f in ALL_FLAG_NAMES]
+                header = [html.Th("Index"), html.Th("Text"), html.Th("Flags")]
                 rows = [html.Tr(header)]
                 for item in judge_results.get("flagged", []):
-                    row = [html.Td(item.get("index")), html.Td(item.get("text"))]
                     flags = item.get("flags", {})
-                    for f in ALL_FLAG_NAMES:
-                        row.append(html.Td(str(flags.get(f, False))))
+                    true_flags = [name.replace('_', ' ').title() for name, val in flags.items() if val]
+                    row = [
+                        html.Td(item.get("index")),
+                        html.Td(item.get("text")),
+                        html.Td(", ".join(true_flags)),
+                    ]
                     rows.append(html.Tr(row))
                 judge_div = html.Table(rows, className="table table-sm table-dark")
             else:
