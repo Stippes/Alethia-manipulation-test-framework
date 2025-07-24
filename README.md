@@ -50,8 +50,8 @@ This section walks through a full workflow from setting up the project to analys
    cd Alethia_open_manipulation_framework
    python3 -m venv .venv
    source .venv/bin/activate
-   pip install openai python-dateutil requests pytest
-   ```
+   pip install -r requirements.txt
+  ```
 
 2. **Configure API keys**
 

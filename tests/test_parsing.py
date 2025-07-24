@@ -7,6 +7,7 @@ os.environ["DEBUG_MODE"] = "1"
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import dashboard_app as da
+from scripts import input_parser
 
 
 def test_parse_uploaded_file_json():
@@ -46,3 +47,11 @@ def test_parse_uploaded_file_csv():
     result = da.parse_uploaded_file(contents, "log.csv")
     assert len(result["messages"]) == 2
     assert result["messages"][1]["text"] == "hello"
+
+
+def test_parse_txt_chat_timestamp(tmp_path):
+    path = tmp_path / "chat.txt"
+    path.write_text("[10:00:00] User: hi")
+    result = input_parser.parse_txt_chat(str(path))
+    ts = result["messages"][0]["timestamp"]
+    assert ts is not None and ts.endswith("10:00:00")

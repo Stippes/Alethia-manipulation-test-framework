@@ -5,3 +5,4 @@ requests
 dash_bootstrap_components
 pytest
 gunicorn
+python-dateutil
