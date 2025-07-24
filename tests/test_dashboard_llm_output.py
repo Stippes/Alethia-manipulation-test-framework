@@ -108,3 +108,22 @@ def test_update_output_callback(monkeypatch):
     assert header_labels == ["Index", "Text", "Flags"]
     first_row = [cell.children for cell in table.children[1].children]
     assert first_row == [0, "Buy now!", "Urgency"]
+
+
+def test_update_output_no_file_has_dark_theme():
+    outputs = da.update_output(
+        None,
+        "plain",
+        0,
+        0,
+        "openai",
+        [],
+        "foo",
+        False,
+        [],
+        None,
+    )
+    flag_fig = outputs[-2]
+    time_fig = outputs[-1]
+    assert flag_fig.layout.template.layout.paper_bgcolor == "rgb(17,17,17)"
+    assert time_fig.layout.template.layout.paper_bgcolor == "rgb(17,17,17)"

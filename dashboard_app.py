@@ -133,6 +133,11 @@ def build_timeline_graph(heur: List[int], llm: List[int]) -> "go.Figure":
     return fig
 
 
+def empty_figure() -> "go.Figure":
+    """Return a blank dark-themed Plotly figure."""
+    return go.Figure(layout={"template": "plotly_dark"})
+
+
 
 
 def parse_uploaded_file(contents: str, filename: str) -> Dict[str, Any]:
@@ -594,8 +599,8 @@ def update_output(
             None,
             log_entries if DEBUG_MODE else debug_log,
             None,
-            go.Figure(),
-            go.Figure(),
+            empty_figure(),
+            empty_figure(),
         ]
 
     try:
@@ -622,8 +627,8 @@ def update_output(
             None,
             log_entries if DEBUG_MODE else debug_log,
             None,
-            go.Figure(),
-            go.Figure(),
+            empty_figure(),
+            empty_figure(),
         ]
 
     log("analysis complete")
