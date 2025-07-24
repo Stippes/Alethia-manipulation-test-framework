@@ -55,3 +55,13 @@ def test_parse_txt_chat_timestamp(tmp_path):
     result = input_parser.parse_txt_chat(str(path))
     ts = result["messages"][0]["timestamp"]
     assert ts is not None and ts.endswith("10:00:00")
+
+
+def test_parse_txt_chat_timestamp_no_dateutil(tmp_path, monkeypatch):
+    path = tmp_path / "chat.txt"
+    path.write_text("[10:00:00] User: hi")
+
+    monkeypatch.setattr(input_parser, "_date_parser", None)
+    result = input_parser.parse_txt_chat(str(path))
+    ts = result["messages"][0]["timestamp"]
+    assert ts is not None and ts.endswith("10:00:00")

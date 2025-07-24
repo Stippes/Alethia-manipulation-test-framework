@@ -104,7 +104,10 @@ def parse_txt_chat(txt_path: str) -> Dict[str, Any]:
                     if _date_parser:
                         timestamp = _date_parser.parse(raw_ts)
                     else:
-                        timestamp = datetime.fromisoformat(raw_ts)
+                        try:
+                            timestamp = datetime.fromisoformat(raw_ts)
+                        except Exception:
+                            timestamp = datetime.strptime(raw_ts, "%H:%M:%S")
                 except Exception:
                     timestamp = None
                 sender = match1.group('sender').strip()
@@ -115,7 +118,10 @@ def parse_txt_chat(txt_path: str) -> Dict[str, Any]:
                     if _date_parser:
                         timestamp = _date_parser.parse(raw_ts)
                     else:
-                        timestamp = datetime.fromisoformat(raw_ts)
+                        try:
+                            timestamp = datetime.fromisoformat(raw_ts)
+                        except Exception:
+                            timestamp = datetime.strptime(raw_ts, "%H:%M:%S")
                 except Exception:
                     timestamp = None
                 sender = match2.group('sender').strip()
