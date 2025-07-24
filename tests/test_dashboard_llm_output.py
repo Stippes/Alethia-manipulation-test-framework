@@ -102,3 +102,9 @@ def test_update_output_callback(monkeypatch):
     )
     assert outputs[25] == fake_results
     assert any("processed results" in entry for entry in outputs[24])
+
+    table = outputs[20]
+    header_labels = [cell.children for cell in table.children[0].children]
+    assert header_labels == ["Index", "Text", "Flags"]
+    first_row = [cell.children for cell in table.children[1].children]
+    assert first_row == [0, "Buy now!", "Urgency"]
