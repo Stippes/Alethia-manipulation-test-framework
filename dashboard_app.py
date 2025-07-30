@@ -62,6 +62,9 @@ DEBUG_MODE = os.getenv("DEBUG_MODE") == "1"
 from scripts import input_parser, static_feature_extractor
 from scripts.judge_conversation import judge_conversation_llm
 from scripts.judge_utils import merge_judge_results
+from flask import jsonify
+from worker import queue
+REDIS_URL = os.getenv("REDIS_URL")
 import scorer
 
 # Flags added beyond the original four categories
@@ -298,6 +301,19 @@ external_stylesheets = [dbc.icons.FONT_AWESOME, DARK_THEME]
 app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
 app.title = "Alethia Manipulation Transparency Console"
 server = app.server
+
+# API route for async judge jobs
+@server.route("/api/job/<job_id>")
+def get_job_status(job_id: str):
+    """Return status and result for a queued judge job."""
+    job = queue.fetch_job(job_id)
+    if job is None:
+        return jsonify({"status": "not_found"}), 404
+    if job.is_finished:
+        return jsonify({"status": "finished", "result": job.result})
+    if job.is_failed:
+        return jsonify({"status": "failed"})
+    return jsonify({"status": "queued"})
 
 app.layout = html.Div([
     html.Link(id="theme-link", rel="stylesheet", href=DARK_THEME),
@@ -1013,13 +1029,20 @@ def update_output(
 
     judge_div = html.Div()
     summary_text = "No LLM judge results yet"
+    merged_for_plots = {}
     if judge_clicks:
         try:
-            log(f"requesting {provider or 'auto'} ...")
-            logger.debug("Sending judge request")
-            judge_results = judge_conversation_llm(conv, provider=provider or "auto")
-            log("received response")
-            logger.debug("Judge response parsed")
+            log(f"queueing {provider or 'auto'} ...")
+            logger.debug("Queueing judge request")
+            if REDIS_URL:
+                job = queue.enqueue(judge_conversation_llm, conv, provider=provider or "auto")
+                judge_div = dbc.Alert(f"Job queued: {job.id}", color="info", className="mt-2")
+                judge_results = {"job_id": job.id}
+                summary_text = "LLM judge queued"
+            else:
+                judge_results = judge_conversation_llm(conv, provider=provider or "auto")
+                log("received response")
+                logger.debug("Judge response parsed")
         except RuntimeError as exc:
             msg = str(exc)
             log(f"error: {msg}")
@@ -1034,7 +1057,9 @@ def update_output(
             judge_div = dbc.Alert(str(exc), color="warning", className="mt-2")
             summary_text = str(exc)
         else:
-            if not isinstance(judge_results, dict):
+            if isinstance(judge_results, dict) and "job_id" in judge_results:
+                pass  # results pending
+            elif not isinstance(judge_results, dict):
                 msg = "LLM judge results could not be parsed"
                 log(msg)
                 logger.warning("%s: %r", msg, judge_results)
@@ -1061,7 +1086,7 @@ def update_output(
                     log("processed results")
                     logger.debug("Merged judge results for plotting")
                     summary_text = summarize_judge_results(merged_for_plots)
-    elif judge_results is not None:
+    elif judge_results is not None and "job_id" not in judge_results:
         if not judge_results:
             summary_text = "LLM judge returned no results \u2013 check API keys."
             judge_div = dbc.Alert(summary_text, color="warning", className="mt-2")
@@ -1084,17 +1109,23 @@ def update_output(
                 judge_div = html.Div("No manipulative bot messages detected.", className="text-muted")
             merged_for_plots = merge_judge_results(judge_results)
             summary_text = summarize_judge_results(merged_for_plots)
-    if judge_results is not None:
+    if judge_results is not None and "job_id" not in judge_results:
         merged_for_plots = merge_judge_results(judge_results)
         summary_text = summarize_judge_results(merged_for_plots)
 
     download_data = None
-    heur_counts, llm_counts = compute_flag_counts(results["features"], merged_for_plots if judge_results is not None else {})
+    heur_counts, llm_counts = compute_flag_counts(
+        results["features"],
+        merged_for_plots if judge_results is not None and "job_id" not in judge_results else {}
+    )
     timeline = results["manipulation_timeline"]
-    llm_timeline = compute_llm_flag_timeline(merged_for_plots if judge_results is not None else {}, len(timeline))
+    llm_timeline = compute_llm_flag_timeline(
+        merged_for_plots if judge_results is not None and "job_id" not in judge_results else {},
+        len(timeline)
+    )
     if download_clicks:
         payload = {"conversation": conv, "analysis": results}
-        if judge_results is not None:
+        if judge_results is not None and "job_id" not in judge_results:
             payload["llm_judge"] = judge_results
 
 

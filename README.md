@@ -8,6 +8,7 @@ This library expects the following environment variables to be defined:
 - `OPENAI_API_KEY`  – Your OpenAI API key for ChatGPT calls
 - `GEMINI_API_KEY`  – (optional) Your Google Gemini API key
 - `CLAUDE_API_KEY`   – (optional) Your Anthropic Claude API key
+- `REDIS_URL`       – (optional) Redis connection URL used for background jobs
 
 ### Local development
 
@@ -16,6 +17,7 @@ During development, you can create a file named `.env` in the project root:
 OPENAI_API_KEY="sk-..."
 GEMINI_API_KEY="ya29..."
 CLAUDE_API_KEY="sk-..."
+REDIS_URL="redis://localhost:6379/0"
 
 
 Make sure to add `.env` to `.gitignore` so you never commit your secrets.
@@ -135,7 +137,7 @@ This section walks through a full workflow from setting up the project to analys
 
 9. **Launch the interactive dashboard**
 
-   Make sure you've installed all dependencies with `pip install -r requirements.txt` before starting the dashboard. Then run `python dashboard_app.py` and open `http://127.0.0.1:8050` in your browser. Upload a conversation file to explore detected manipulation patterns and download the analysis as JSON. Use the *Conversation Type* dropdown to choose between **Chatbot** (default) and **Social Media** modes. Chatbot mode normalizes senders into `user` and `bot`, while Social Media mode preserves all distinct names.
+   Make sure you've installed all dependencies with `pip install -r requirements.txt` before starting the dashboard. Redis must be running locally (e.g. `redis-server`) and a worker started with `python worker.py` for LLM judging. Then run `python dashboard_app.py` and open `http://127.0.0.1:8050` in your browser. Upload a conversation file to explore detected manipulation patterns and download the analysis as JSON. Use the *Conversation Type* dropdown to choose between **Chatbot** (default) and **Social Media** modes. Chatbot mode normalizes senders into `user` and `bot`, while Social Media mode preserves all distinct names.
 
 ### Deploying to Heroku
 
@@ -147,11 +149,12 @@ This section walks through a full workflow from setting up the project to analys
    heroku config:set OPENAI_API_KEY=... GEMINI_API_KEY=... CLAUDE_API_KEY=...
    ```
 
-3. Push the code and scale a web dyno:
+3. Provision Redis and push the code:
 
    ```bash
    git push heroku main
-   heroku ps:scale web=1
+   heroku addons:create heroku-redis:hobby-dev
+   heroku ps:scale web=1 worker=1
    ```
 
 The dashboard will be available at the URL shown by the `heroku create` command.
