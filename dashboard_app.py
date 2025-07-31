@@ -9,6 +9,15 @@ from datetime import datetime
 from typing import Dict, Any, List, Tuple
 import logging
 from logging_utils import setup_logging
+from dash.exceptions import PreventUpdate
+from scripts import input_parser, static_feature_extractor
+from scripts.judge_conversation import judge_conversation_llm
+from scripts.judge_utils import merge_judge_results
+from flask import jsonify
+from worker import queue
+import scorer
+import ssl
+from redis import Redis
 
 from insight_helpers import (
     compute_manipulation_ratio,
@@ -59,13 +68,11 @@ DEBUG_MODE = os.getenv("DEBUG_MODE") == "1"
 #  'LUMEN','PULSE','SLATE','SOLAR','SPACELAB',
 #  'SUPERHERO','UNITED','VAPOR','YETI']
 
-from scripts import input_parser, static_feature_extractor
-from scripts.judge_conversation import judge_conversation_llm
-from scripts.judge_utils import merge_judge_results
-from flask import jsonify
-from worker import queue
+
+
 REDIS_URL = os.getenv("REDIS_URL")
-import scorer
+redis_conn = Redis.from_url(REDIS_URL, ssl_cert_reqs=ssl.CERT_NONE)
+
 
 # Flags added beyond the original four categories
 NEW_FLAGS = [
@@ -318,6 +325,7 @@ def get_job_status(job_id: str):
 app.layout = html.Div([
     html.Link(id="theme-link", rel="stylesheet", href=DARK_THEME),
     dcc.Store(id="theme-store", data="dark"),
+    dcc.Interval(id="judge-poll-interval", interval=3000, n_intervals=0),
     dcc.Store(id="llm-debug", data=[]),
     dcc.Store(id="judge-store"),
     dbc.Container(
@@ -636,6 +644,17 @@ app.layout = html.Div([
     ],
 )
 
+def poll_judge(n, prev, filename):
+    conv_id = filename.rsplit(".",1)[0]
+    raw = redis_conn.get(f"judge:{conv_id}")
+    if not raw:
+        raise PreventUpdate
+    results = json.loads(raw)
+    # Build your table or alert from `results` here:
+    table = build_judge_table(results)
+    # Once you have results, you can stop the interval:
+    return table
+
 def update_output(
     contents,
     view_mode,
@@ -652,6 +671,20 @@ def update_output(
     bg = "#ffffff" if light_on else "#1a1a1a"
     text_color = "black" if light_on else "white"
     log_entries = list(debug_log or []) if DEBUG_MODE else []
+    if judge_data and "job_id" in judge_data:
+        job_id = judge_data["job_id"]
+        raw = redis_conn.get(f"judge:{job_id}")
+        if raw:
+            # the job finished — replace judge_data with the real result
+            try:
+                judge_data = json.loads(raw)
+                log(f"LLM judge job {job_id} finished")
+            except json.JSONDecodeError:
+                log(f"⚠️ could not parse Redis payload for job {job_id}")
+                judge_data = None
+        else:
+            # still pending: leave judge_data alone (just a job_id)
+            log(f"LLM judge job {job_id} still pending")
     def log(msg):
         logger.info(msg)
         if DEBUG_MODE:
@@ -1035,8 +1068,13 @@ def update_output(
             log(f"queueing {provider or 'auto'} ...")
             logger.debug("Queueing judge request")
             if REDIS_URL:
-                log(f"Inside of if REDIS_URL")
-                job = queue.enqueue(judge_conversation_llm, conv, provider=provider or "auto")
+                job = queue.enqueue(
+                    "worker.judged_and_store",
+                    conv,
+                    provider=provider or "auto",
+                    result_ttl=3600,              # keep result for an hour
+                    meta={"conversation_id": conv["conversation_id"]}
+                )
                 judge_div = dbc.Alert(f"Job queued: {job.id}", color="info", className="mt-2")
                 judge_results = {"job_id": job.id}
                 summary_text = "LLM judge queued"
