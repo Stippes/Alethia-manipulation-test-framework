@@ -8,6 +8,10 @@ import logging
 from logging_utils import setup_logging, get_llm_logger
 from helpers import extract_json_block
 
+from dotenv import load_dotenv
+
+load_dotenv()  # read .env before checking REDIS_URL or API keys
+
 
 def _extract_all_json(text: str) -> list:
     """Return a list of all JSON objects found in *text*."""

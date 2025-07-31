@@ -1035,6 +1035,7 @@ def update_output(
             log(f"queueing {provider or 'auto'} ...")
             logger.debug("Queueing judge request")
             if REDIS_URL:
+                log(f"Inside of if REDIS_URL")
                 job = queue.enqueue(judge_conversation_llm, conv, provider=provider or "auto")
                 judge_div = dbc.Alert(f"Job queued: {job.id}", color="info", className="mt-2")
                 judge_results = {"job_id": job.id}
